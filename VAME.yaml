@@ -26,6 +26,7 @@ dependencies:
   - h5py
   - networkx    
   - tqdm
+  - seaborn
   - pip:
       - umap-learn
       - opencv-python-headless
