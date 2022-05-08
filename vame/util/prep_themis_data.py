@@ -83,7 +83,7 @@ def pickle_dlc_to_df(pkl_file, df_header, return_conf_df=False):
         )
 
         landmark_df = pd.concat([landmark_position_df, landmark_conf_df], axis=1)
-        
+
         # rearrange df such that bodypart1: x,y, likelihood; bodypart2:x,y,likelihood
         columns_sorted = [
             (lm[0], dim)

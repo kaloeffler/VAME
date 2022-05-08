@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="vame",
-    version='1.0',
+    version="1.0",
     packages=find_packages(),
     entry_points={"console_scripts": "vame = vame:main"},
     author="K. Luxem & P. Bauer",
@@ -13,18 +13,16 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://https://github.com/LINCellularNeuroscience/VAME/",
-    setup_requires=[
-        "pytest",
-    ],	
+    setup_requires=["pytest",],
     install_requires=[
         "pytest-shutil",
         "scipy",
         "numpy",
         "matplotlib",
         "pathlib",
-	"pandas",
+        "pandas",
         "ruamel.yaml",
-	"sklearn",
+        "sklearn",
         "pyyaml",
         "opencv-python",
     ],

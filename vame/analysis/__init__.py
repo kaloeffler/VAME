@@ -9,6 +9,7 @@ https://github.com/LINCellularNeuroscience/VAME
 Licensed under GNU General Public License v3.0
 """
 import sys
+
 sys.dont_write_bytecode = True
 
 from vame.analysis.pose_segmentation import pose_segmentation
@@ -17,4 +18,3 @@ from vame.analysis.community_analysis import community
 from vame.analysis.umap_visualization import visualization
 from vame.analysis.generative_functions import generative_model
 from vame.analysis.gif_creator import gif
-
