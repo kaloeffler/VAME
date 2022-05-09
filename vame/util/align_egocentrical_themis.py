@@ -77,7 +77,7 @@ def align_mouse(
                 ret, frame = capture.read()
                 frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
                 frame = frame - bg
-                frame[frame <= 0] = 0
+                frame = (frame - np.min(frame)) / (np.max(frame) - np.min(frame))
             except:
                 print("Couldn't find a frame in capture.read(). #Frame: %d" % idx)
                 continue
@@ -233,7 +233,6 @@ def alignment(
             data
         )  # Change this to an abitrary number if you first want to test the code
     # FIXME: remove
-    frame_count = 1000
     frames, n, time_series = align_mouse(
         project_dir,
         landmark_file_name,

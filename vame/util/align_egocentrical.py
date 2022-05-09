@@ -259,7 +259,7 @@ def play_aligned_video(a, n, frame_count, landmark_names=None, save_video_path="
     writer = cv.VideoWriter(
         os.path.join(save_video_path, "mouse_video.mp4"),
         cv.VideoWriter_fourcc(*"DIVX"),
-        20,
+        60,
         a[0].shape,
     )
 
@@ -269,22 +269,21 @@ def play_aligned_video(a, n, frame_count, landmark_names=None, save_video_path="
         if ret == True:
 
             # Display the resulting frame
-            frame = cv.cvtColor(frame.astype("uint8") * 255, cv.COLOR_GRAY2BGR)
-            im_color = cv.applyColorMap(frame, cv.COLORMAP_JET)
+            frame = cv.cvtColor((frame * 255).astype("uint8"), cv.COLOR_GRAY2BGR)
             for c, j in enumerate(n[i]):
-                cv.circle(im_color, (j[0], j[1]), 5, colors[c % len(colors)], -1)
+                cv.circle(frame, (j[0], j[1]), 5, colors[c % len(colors)], -1)
                 if landmark_names is not None:
                     cv.putText(
-                        im_color,
+                        frame,
                         landmark_names[c],
                         (j[0], j[1]),
                         cv.FONT_HERSHEY_SIMPLEX,
-                        0.2,
+                        0.4,
                         colors[c % len(colors)],
                         1,
                     )
 
-            writer.write(im_color)
+            writer.write(frame)
 
         # Break the loop
         else:
