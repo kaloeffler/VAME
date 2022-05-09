@@ -14,7 +14,8 @@ PKL_ROOT = "/media/Themis/Data/Models/3843S2B10Gaussians/analyses"
 PROJECT_PATH = "/home/katharina/vame_approach/themis_dummy"
 
 CREATE_NEW_PROJECT = False
-TRAIN_MODEL = True
+PREP_TRAINING_DATA = True
+TRAIN_MODEL = False
 EVAL_MODEL = False
 VISUALIZE_MODEL = False
 
@@ -28,15 +29,21 @@ if CREATE_NEW_PROJECT:
 else:
     config = os.path.join(PROJECT_PATH, "config.yaml")
 
-if TRAIN_MODEL:
-    # TODO: add some checks concerning the threshold - otherwise many datapoints will be rejected
-    # cross check with example.csv how many datapoints are rejected
+# run lm_congf_quantiles.py to see the distribution of the confidence scores in the landmark
+# files and select a suitable threshold
 
-    egocentric_alignment(PROJECT_PATH, pose_ref_index=[0, 5])
+# TODO: add some checks concerning the threshold - otherwise many datapoints will be rejected
+# cross check with example.csv how many datapoints are rejected
+if PREP_TRAINING_DATA:
+    # 0: nose, tailbase:16 - similar to what is used in VAME
+    # however concerning the confidence scores chest 2 has high scores
+    egocentric_alignment(
+        PROJECT_PATH, pose_ref_index=[0, 16], use_video=True, check_video=True
+    )
     print()
     # 2.3 training data generation
     vame.create_trainset(config)
-
+if TRAIN_MODEL:
     # 3 VAME training
     vame.train_model(config)
 if EVAL_MODEL:
