@@ -225,14 +225,13 @@ def alignment(
         if not capture.isOpened():
             raise Exception("Unable to open video file: {0}".format(video_file))
 
-        frame_count = int(capture.get(cv.CAP_PROP_FRAME_COUNT))
+        # frame_count = int(capture.get(cv.CAP_PROP_FRAME_COUNT))
         capture.release()
     else:
         bg = 0
-        frame_count = len(
-            data
-        )  # Change this to an abitrary number if you first want to test the code
-    # FIXME: remove
+    frame_count = len(
+        data
+    )  # Change this to an abitrary number if you first want to test the code
     frames, n, time_series = align_mouse(
         project_dir,
         landmark_file_name,
