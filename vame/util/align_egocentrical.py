@@ -28,15 +28,9 @@ def crop_and_flip(rect, src, points, ref_index):
     x_diff = center[0] - size[0] // 2
     y_diff = center[1] - size[1] // 2
 
-    dlc_points_shifted = []
-
-    for i in points:
-        point = cv.transform(np.array([[[i[0], i[1]]]]), M)[0][0]
-
-        point[0] -= x_diff
-        point[1] -= y_diff
-
-        dlc_points_shifted.append(point)
+    dlc_points_shifted = cv.transform(
+        np.array(points).reshape(1, -1, 2), M
+    ).squeeze() - np.array([x_diff, y_diff]).reshape(1, 2)
 
     # Perform rotation on src image
     dst = cv.warpAffine(src.astype("float32"), M, src.shape[:2])
@@ -54,22 +48,15 @@ def crop_and_flip(rect, src, points, ref_index):
         x_diff = center[0] - size[0] // 2
         y_diff = center[1] - size[1] // 2
 
-        points = dlc_points_shifted
-        dlc_points_shifted = []
-
-        for i in points:
-            point = cv.transform(np.array([[[i[0], i[1]]]]), M)[0][0]
-
-            point[0] -= x_diff
-            point[1] -= y_diff
-
-            dlc_points_shifted.append(point)
+        dlc_points_shifted = cv.transform(
+            np.array(dlc_points_shifted).reshape(1, -1, 2), M
+        ).squeeze() - np.array([x_diff, y_diff]).reshape(1, 2)
 
         # Perform rotation on src image
         dst = cv.warpAffine(out.astype("float32"), M, out.shape[:2])
         out = cv.getRectSubPix(dst, size, center)
 
-    return out, dlc_points_shifted
+    return out, list(dlc_points_shifted)
 
 
 # Helper function to return indexes of nans
@@ -203,13 +190,9 @@ def align_mouse(
             frame = np.zeros((1, 1))
 
         # Read coordinates and add border
-        pose_list_bordered = []
-
-        for i in pose_list:
-            pose_list_bordered.append(
-                (int(i[idx][0] + crop_size[0]), int(i[idx][1] + crop_size[1]))
-            )
-
+        pose_list_bordered = pose_list[idx].astype(int) + np.array(crop_size).reshape(
+            1, 2
+        )
         img = cv.copyMakeBorder(
             frame,
             crop_size[1],
@@ -220,14 +203,7 @@ def align_mouse(
             0,
         )
 
-        punkte = []
-        for i in pose_ref_index:
-            coord = []
-            coord.append(pose_list_bordered[i][0])
-            coord.append(pose_list_bordered[i][1])
-            punkte.append(coord)
-        punkte = [punkte]
-        punkte = np.asarray(punkte)
+        punkte = pose_list_bordered[pose_ref_index, :].reshape(1, -1, 2)
 
         # calculate minimal rectangle around snout and tail
         rect = cv.minAreaRect(punkte)
@@ -262,17 +238,30 @@ def align_mouse(
 
 
 # play aligned video
-def play_aligned_video(a, n, frame_count):
+def play_aligned_video(a, n, frame_count, landmark_names=None, save_video_path="."):
     colors = [
         (255, 0, 0),
+        (125, 0, 0),
         (0, 255, 0),
+        (0, 125, 0),
         (0, 0, 255),
+        (0, 0, 125),
         (255, 255, 0),
+        (125, 125, 0),
         (255, 0, 255),
-        (0, 255, 255),
+        (125, 0, 125),
+        (0, 125, 125),
         (0, 0, 0),
         (255, 255, 255),
+        (125, 125, 125),
     ]
+
+    writer = cv.VideoWriter(
+        os.path.join(save_video_path, "mouse_video.mp4"),
+        cv.VideoWriter_fourcc(*"DIVX"),
+        20,
+        a[0].shape,
+    )
 
     for i in range(frame_count):
         # Capture frame-by-frame
@@ -282,20 +271,25 @@ def play_aligned_video(a, n, frame_count):
             # Display the resulting frame
             frame = cv.cvtColor(frame.astype("uint8") * 255, cv.COLOR_GRAY2BGR)
             im_color = cv.applyColorMap(frame, cv.COLORMAP_JET)
-
             for c, j in enumerate(n[i]):
-                cv.circle(im_color, (j[0], j[1]), 5, colors[c], -1)
+                cv.circle(im_color, (j[0], j[1]), 5, colors[c % len(colors)], -1)
+                if landmark_names is not None:
+                    cv.putText(
+                        im_color,
+                        landmark_names[c],
+                        (j[0], j[1]),
+                        cv.FONT_HERSHEY_SIMPLEX,
+                        0.2,
+                        colors[c % len(colors)],
+                        1,
+                    )
 
-            cv.imshow("Frame", im_color)
-
-            # Press Q on keyboard to  exit
-            if cv.waitKey(25) & 0xFF == ord("q"):
-                break
+            writer.write(im_color)
 
         # Break the loop
         else:
             break
-    cv.destroyAllWindows()
+    writer.release()
 
 
 def alignment(

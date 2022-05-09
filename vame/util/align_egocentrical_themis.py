@@ -85,12 +85,10 @@ def align_mouse(
             frame = np.zeros((1, 1))
 
         # Read coordinates and add border
-        pose_list_bordered = []
-
-        for i in pose_list:
-            pose_list_bordered.append(
-                (int(i[idx][0] + crop_size[0]), int(i[idx][1] + crop_size[1]))
-            )
+        pose_list_bordered = [
+            (int(i[idx][0] + crop_size[0]), int(i[idx][1] + crop_size[1]))
+            for i in pose_list
+        ]
 
         img = cv.copyMakeBorder(
             frame,
@@ -102,15 +100,7 @@ def align_mouse(
             0,
         )
 
-        punkte = []
-        for i in pose_ref_index:
-            coord = []
-            coord.append(pose_list_bordered[i][0])
-            coord.append(pose_list_bordered[i][1])
-            punkte.append(coord)
-        punkte = [punkte]
-        punkte = np.asarray(punkte)
-
+        punkte = np.array(pose_list_bordered)[pose_ref_index, :].reshape(1, -1, 2)
         # calculate minimal rectangle around snout and tail
         rect = cv.minAreaRect(punkte)
 
@@ -242,7 +232,8 @@ def alignment(
         frame_count = len(
             data
         )  # Change this to an abitrary number if you first want to test the code
-
+    # FIXME: remove
+    frame_count = 1000
     frames, n, time_series = align_mouse(
         project_dir,
         landmark_file_name,
@@ -257,7 +248,15 @@ def alignment(
     )
 
     if check_video:
-        play_aligned_video(frames, n, frame_count)
+        save_video_path = os.path.join(project_dir, "results", landmark_file_name)
+        if not os.path.exists(save_video_path):
+            os.makedirs(save_video_path)
+        df = pd.read_csv(
+            os.path.join(project_dir, "landmarks", landmark_file_name + ".csv"),
+            header=[0, 1],
+        )
+        landmark_names = [col_name[0] for col_name in df.columns if col_name[1] == "x"]
+        play_aligned_video(frames, n, frame_count, landmark_names, save_video_path)
 
     return time_series, frames
 
