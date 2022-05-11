@@ -157,6 +157,7 @@ def load_model(cfg, model_name):
             os.path.join(
                 cfg["project_path"],
                 "model",
+                cfg["time_stamp"],
                 "best_model",
                 model_name + "_" + cfg["Project"] + ".pkl",
             )
@@ -172,7 +173,7 @@ def generative_model(config, mode="sampling"):
     cfg = read_config(config_file)
     model_name = cfg["model_name"]
     n_cluster = cfg["n_cluster"]
-
+    # here the landmark files are collected
     files = []
     if cfg["all_data"] == "No":
         all_flag = input(
@@ -203,6 +204,7 @@ def generative_model(config, mode="sampling"):
         path_to_file = os.path.join(
             cfg["project_path"],
             "results",
+            cfg["time_stamp"],
             file,
             model_name,
             "kmeans-" + str(n_cluster),

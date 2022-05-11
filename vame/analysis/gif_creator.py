@@ -112,6 +112,7 @@ def gif(
         path_to_file = os.path.join(
             cfg["project_path"],
             "results",
+            cfg["time_stamp"],
             file,
             model_name,
             "kmeans-" + str(n_cluster),

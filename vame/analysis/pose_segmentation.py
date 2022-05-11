@@ -79,6 +79,7 @@ def load_model(cfg, model_name, legacy):
             os.path.join(
                 cfg["project_path"],
                 "model",
+                cfg["time_stamp"],
                 "best_model",
                 model_name + "_" + cfg["Project"] + ".pkl",
             )
@@ -228,11 +229,23 @@ def pose_segmentation(config):
 
         for folders in cfg["video_sets"]:
             if not os.path.exists(
-                os.path.join(cfg["project_path"], "results", folders, model_name, "")
+                os.path.join(
+                    cfg["project_path"],
+                    "results",
+                    cfg["time_stamp"],
+                    folders,
+                    model_name,
+                    "",
+                )
             ):
-                os.mkdir(
+                os.makedirs(
                     os.path.join(
-                        cfg["project_path"], "results", folders, model_name, ""
+                        cfg["project_path"],
+                        "results",
+                        cfg["time_stamp"],
+                        folders,
+                        model_name,
+                        "",
                     )
                 )
 
@@ -272,6 +285,7 @@ def pose_segmentation(config):
             os.path.join(
                 cfg["project_path"],
                 "results",
+                cfg["time_stamp"],
                 file,
                 model_name,
                 "kmeans-" + str(n_cluster),
@@ -312,6 +326,7 @@ def pose_segmentation(config):
                 os.path.join(
                     cfg["project_path"],
                     "results",
+                    cfg["time_stamp"],
                     file,
                     model_name,
                     "kmeans-" + str(n_cluster),
@@ -330,6 +345,7 @@ def pose_segmentation(config):
                 path_to_latent_vector = os.path.join(
                     cfg["project_path"],
                     "results",
+                    cfg["time_stamp"],
                     file,
                     model_name,
                     "kmeans-" + str(n_cluster),
@@ -372,6 +388,7 @@ def pose_segmentation(config):
                     os.path.join(
                         cfg["project_path"],
                         "results",
+                        cfg["time_stamp"],
                         file,
                         "",
                         model_name,
@@ -383,6 +400,7 @@ def pose_segmentation(config):
                     os.path.join(
                         cfg["project_path"],
                         "results",
+                        cfg["time_stamp"],
                         file,
                         model_name,
                         "kmeans-" + str(n_cluster),
@@ -390,10 +408,11 @@ def pose_segmentation(config):
                     )
                 ):
                     try:
-                        os.mkdir(
+                        os.makedirs(
                             os.path.join(
                                 cfg["project_path"],
                                 "results",
+                                cfg["time_stamp"],
                                 file,
                                 "",
                                 model_name,
@@ -407,6 +426,7 @@ def pose_segmentation(config):
                 save_data = os.path.join(
                     cfg["project_path"],
                     "results",
+                    cfg["time_stamp"],
                     file,
                     model_name,
                     "kmeans-" + str(n_cluster),

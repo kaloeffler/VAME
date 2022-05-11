@@ -94,6 +94,7 @@ def visualization(config, label=None):
         path_to_file = os.path.join(
             cfg["project_path"],
             "results",
+            cfg["time_stamp"],
             file,
             "",
             model_name,

@@ -35,6 +35,8 @@ def init_new_project(project_path, video_root, landmark_root):
 
     cfg_file["Project"] = Path(project_path).name
     cfg_file["project_path"] = str(project_path) + "/"
+    # timestamp will be written when a model is created at training
+    cfg_file["time_stamp"] = "None"
     cfg_file["test_fraction"] = 0.1
     # since we have more landmark predictions ( trained with different approaches)
     #  than videos - use the names of the landmark predictions instead
@@ -48,14 +50,16 @@ def init_new_project(project_path, video_root, landmark_root):
     cfg_file["beta"] = 1
     cfg_file["zdims"] = 30
     cfg_file["learning_rate"] = 5e-4
-    cfg_file[
-        "time_window"
-    ] = 120  # FIXME: set with respect to frame rate! / subsampling?
+    # FIXME: the videos in the VAME paper have frame rate 25 (see video example), we use 120fps
+    #  so adapting the window size to a comparable total time span here
+    cfg_file["time_window"] = int(30 * 120 / 25)
     cfg_file["prediction_decoder"] = 1
-    cfg_file["prediction_steps"] = 15
+    # FIXME: the videos in the VAME paper have frame rate 25 (see video example), we use 120fps
+    #  so adapting the window size to a comparable total time span here
+    cfg_file["prediction_steps"] = int(15 * 120 / 25)
     cfg_file["model_convergence"] = 50
     cfg_file["model_snapshot"] = 50
-    cfg_file["num_features"] = 12
+    cfg_file["num_features"] = 34  # number of landmarks * 2
     cfg_file["savgol_filter"] = True
     cfg_file["savgol_length"] = 5
     cfg_file["savgol_order"] = 2
@@ -83,6 +87,8 @@ def init_new_project(project_path, video_root, landmark_root):
     cfg_file["model_name"] = "VAME"
     cfg_file["n_cluster"] = 15
     cfg_file["pretrained_weights"] = False
+    # if pretrained_weights = True provide the full path to the model
+    # folder (../.../model) that contains the model weights you want to use here
     cfg_file["pretrained_model"] = "None"
     cfg_file["min_dist"] = 0.1
     cfg_file["n_neighbors"] = 200

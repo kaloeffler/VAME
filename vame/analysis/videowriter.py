@@ -14,8 +14,9 @@ from pathlib import Path
 import numpy as np
 import cv2 as cv
 import tqdm
-
+import pandas as pd
 from vame.util.auxiliary import read_config
+import re
 
 
 def get_cluster_vid(cfg, path_to_file, file, n_cluster, videoType, flag):
@@ -29,9 +30,16 @@ def get_cluster_vid(cfg, path_to_file, file, n_cluster, videoType, flag):
         labels = np.load(
             os.path.join(path_to_file, "community", "community_label_" + file + ".npy")
         )
-    capture = cv.VideoCapture(
-        os.path.join(cfg["project_path"], "videos", file + videoType)
+
+    video_df = pd.read_csv(os.path.join(cfg["project_path"], "video_info.csv"))
+    video_id = int(re.findall(r"\d+", file)[0])
+    video_file = os.path.join(
+        *video_df[video_df["video_id"] == video_id][["vid_folder", "vid_file"]].values[
+            0
+        ]
     )
+
+    capture = cv.VideoCapture(os.path.join(video_file))
 
     if capture.isOpened():
         width = capture.get(cv.CAP_PROP_FRAME_WIDTH)
@@ -114,6 +122,7 @@ def motif_videos(config, videoType=".mp4"):
         path_to_file = os.path.join(
             cfg["project_path"],
             "results",
+            cfg["time_stamp"],
             file,
             model_name,
             "kmeans-" + str(n_cluster),
@@ -163,6 +172,7 @@ def community_videos(config, videoType=".mp4"):
         path_to_file = os.path.join(
             cfg["project_path"],
             "results",
+            cfg["time_stamp"],
             file,
             model_name,
             "kmeans-" + str(n_cluster),

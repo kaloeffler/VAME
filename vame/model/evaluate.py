@@ -99,8 +99,9 @@ def plot_reconstruction(
         )
 
 
-def plot_loss(cfg, filepath, model_name):
-    basepath = os.path.join(cfg["project_path"], "model", "model_losses")
+def plot_loss(cfg, model_name):
+    time_stamp = cfg["time_stamp"]
+    basepath = os.path.join(cfg["project_path"], "model", time_stamp, "model_losses")
     train_loss = np.load(os.path.join(basepath, "train_losses_" + model_name + ".npy"))
     test_loss = np.load(os.path.join(basepath, "test_losses_" + model_name + ".npy"))
     mse_loss_train = np.load(
@@ -132,8 +133,9 @@ def plot_loss(cfg, filepath, model_name):
     ax1.plot(fut_loss, label="Prediction-Loss")
     ax1.legend()
     # fig.savefig(filepath+'evaluate/'+'MSE-and-KL-Loss'+model_name+'.png')
+    model_path = os.path.join(cfg["project_path"], "model", time_stamp)
     fig.savefig(
-        os.path.join(filepath, "evaluate", "MSE-and-KL-Loss" + model_name + ".png")
+        os.path.join(model_path, "evaluate", "MSE-and-KL-Loss" + model_name + ".png")
     )
 
 
@@ -158,7 +160,8 @@ def eval_temporal(cfg, use_gpu, model_name, legacy):
     dropout_pred = cfg["dropout_pred"]
     softplus = cfg["softplus"]
 
-    filepath = os.path.join(cfg["project_path"], "model")
+    time_stamp = cfg["time_stamp"]
+    filepath = os.path.join(cfg["project_path"], "model", time_stamp)
 
     seq_len_half = int(TEMPORAL_WINDOW / 2)
     if use_gpu:
@@ -181,10 +184,7 @@ def eval_temporal(cfg, use_gpu, model_name, legacy):
         model.load_state_dict(
             torch.load(
                 os.path.join(
-                    cfg["project_path"],
-                    "model",
-                    "best_model",
-                    model_name + "_" + cfg["Project"] + ".pkl",
+                    filepath, "best_model", model_name + "_" + cfg["Project"] + ".pkl",
                 )
             )
         )
@@ -208,10 +208,7 @@ def eval_temporal(cfg, use_gpu, model_name, legacy):
         model.load_state_dict(
             torch.load(
                 os.path.join(
-                    cfg["project_path"],
-                    "model",
-                    "best_model",
-                    model_name + "_" + cfg["Project"] + ".pkl",
+                    filepath, "best_model", model_name + "_" + cfg["Project"] + ".pkl",
                 ),
                 map_location=torch.device("cpu"),
             )
@@ -239,7 +236,7 @@ def eval_temporal(cfg, use_gpu, model_name, legacy):
         FUTURE_STEPS,
     )
     if use_gpu:
-        plot_loss(cfg, filepath, model_name)
+        plot_loss(cfg, model_name)
     else:
         pass  # note, loading of losses needs to be adapted for CPU use #TODO
 
@@ -248,13 +245,15 @@ def evaluate_model(config):
     """
         Evaluation of testset
     """
+    # TODO: replace with other config file? / select model timestamp?
     config_file = Path(config).resolve()
     cfg = read_config(config_file)
     legacy = cfg["legacy"]
     model_name = cfg["model_name"]
-
-    if not os.path.exists(os.path.join(cfg["project_path"], "model", "evaluate")):
-        os.mkdir(os.path.join(cfg["project_path"], "model", "evaluate"))
+    time_stamp = cfg["time_stamp"]
+    eval_path = os.path.join(cfg["project_path"], "model", time_stamp, "evaluate")
+    if not os.path.exists(eval_path):
+        os.mkdir(eval_path)
 
     use_gpu = torch.cuda.is_available()
     if use_gpu:
@@ -265,11 +264,14 @@ def evaluate_model(config):
         torch.device("cpu")
         print("CUDA is not working, or a GPU is not found; using CPU!")
 
-    print("\n\nEvaluation of %s model. \n" % model_name)
+    model_path = os.path.join(
+        cfg["project_path"], "model", time_stamp, "best_model", model_name
+    )
+    print(f"Evaluation of model: {model_path}")
     eval_temporal(cfg, use_gpu, model_name, legacy)
 
     print(
-        "You can find the results of the evaluation in '/Your-VAME-Project-Apr30-2020/model/evaluate/' \n"
+        f"You can find the results of the evaluation in {model_path}/evaluate' \n"
         "OPTIONS:\n"
         "- vame.behavior_segmentation() to identify behavioral motifs.\n"
         "- re-run the model for further fine tuning. Check again with vame.evaluate_model()"

@@ -17,7 +17,8 @@ import cv2 as cv
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import re
+from vame.util.align_egocentrical_themis import background
 
 # Returns cropped image using rect tuple
 def crop_and_flip(rect, src, points, ref_index):
@@ -75,51 +76,6 @@ def crop_and_flip(rect, src, points, ref_index):
     return out, dlc_points_shifted
 
 
-def background(path_to_file, filename, file_format=".mp4", num_frames=1000):
-    """
-    Compute background image from fixed camera
-    """
-
-    capture = cv.VideoCapture(
-        os.path.join(path_to_file, "videos", filename + file_format)
-    )
-
-    if not capture.isOpened():
-        raise Exception(
-            "Unable to open video file: {0}".format(
-                os.path.join(path_to_file, "videos", filename + file_format)
-            )
-        )
-
-    frame_count = int(capture.get(cv.CAP_PROP_FRAME_COUNT))
-    ret, frame = capture.read()
-
-    height, width, _ = frame.shape
-    frames = np.zeros((height, width, num_frames))
-
-    for i in tqdm.tqdm(
-        range(num_frames),
-        disable=not True,
-        desc="Compute background image for video %s" % filename,
-    ):
-        rand = np.random.choice(frame_count, replace=False)
-        capture.set(1, rand)
-        ret, frame = capture.read()
-        gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-        frames[..., i] = gray
-
-    print("Finishing up!")
-    medFrame = np.median(frames, 2)
-    background = scipy.ndimage.median_filter(medFrame, (5, 5))
-
-    np.save(
-        os.path.join(path_to_file, "videos", filename + "-background.npy"), background
-    )
-
-    capture.release()
-    return background
-
-
 def get_rotation_matrix(adjacent, opposite, crop_size=(300, 300)):
 
     tan_alpha = np.abs(opposite) / np.abs(adjacent)
@@ -175,11 +131,20 @@ def get_animal_frames(
     lag = int(time_window / 2)
     # read out data
     data = pd.read_csv(
-        os.path.join(path_to_file, "videos", "pose_estimation", filename + ".csv"),
-        skiprows=2,
+        os.path.join(cfg["project_path"], "landmarks", filename + ".csv"), skiprows=2,
     )
     data_mat = pd.DataFrame.to_numpy(data)
     data_mat = data_mat[:, 1:]
+
+    # get path to the corresponding video
+    video_info_file = os.path.join(cfg["project_path"], "video_info.csv")
+    video_df = pd.read_csv(video_info_file)
+    video_id = int(re.findall(r"\d+", filename)[0])
+    video_file = os.path.join(
+        *video_df[video_df["video_id"] == video_id][["vid_folder", "vid_file"]].values[
+            0
+        ]
+    )
 
     # get the coordinates for alignment from data table
     pose_list = []
@@ -198,14 +163,7 @@ def get_animal_frames(
 
     # compute background
     if subtract_background == True:
-        try:
-            print("Loading background image ...")
-            bg = np.load(
-                os.path.join(path_to_file, "videos", filename + "-background.npy")
-            )
-        except:
-            print("Can't find background image... Calculate background image...")
-            bg = background(path_to_file, filename, file_format)
+        bg = background(video_file)
 
     images = []
     points = []
@@ -218,14 +176,10 @@ def get_animal_frames(
     for i in pose_list:
         i = interpol(i)
 
-    capture = cv.VideoCapture(
-        os.path.join(path_to_file, "videos", filename + file_format)
-    )
+    capture = cv.VideoCapture(os.path.join(video_file))
     if not capture.isOpened():
         raise Exception(
-            "Unable to open video file: {0}".format(
-                os.path.join(path_to_file, "videos", filename + +file_format)
-            )
+            "Unable to open video file: {0}".format(os.path.join(video_file))
         )
 
     for idx in tqdm.tqdm(range(length), disable=not True, desc="Align frames"):

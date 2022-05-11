@@ -16,7 +16,7 @@ import pickle
 import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
-
+import pandas as pd
 from vame.util.auxiliary import read_config
 from vame.analysis.tree_hierarchy import graph_to_tree, draw_tree, traverse_tree_cutline
 
@@ -67,6 +67,7 @@ def get_labels(cfg, files, model_name, n_cluster):
         path_to_file = os.path.join(
             cfg["project_path"],
             "results",
+            cfg["time_stamp"],
             file,
             model_name,
             "kmeans-" + str(n_cluster),
@@ -164,7 +165,13 @@ def umap_embedding(cfg, file, model_name, n_cluster):
     print("UMAP calculation for file %s" % file)
 
     folder = os.path.join(
-        cfg["project_path"], "results", file, model_name, "kmeans-" + str(n_cluster), ""
+        cfg["project_path"],
+        "results",
+        cfg["time_stamp"],
+        file,
+        model_name,
+        "kmeans-" + str(n_cluster),
+        "",
     )
     latent_vector = np.load(os.path.join(folder, "latent_vector_" + file + ".npy"))
 
@@ -207,7 +214,8 @@ def community(config, show_umap=False, cut_tree=None):
     cfg = read_config(config_file)
     model_name = cfg["model_name"]
     n_cluster = cfg["n_cluster"]
-
+    # here the landmark files will be collected and
+    # the motif videos will be created
     files = []
     if cfg["all_data"] == "No":
         all_flag = input(
@@ -243,6 +251,7 @@ def community(config, show_umap=False, cut_tree=None):
         path_to_file = os.path.join(
             cfg["project_path"],
             "results",
+            cfg["time_stamp"],
             file,
             model_name,
             "kmeans-" + str(n_cluster),

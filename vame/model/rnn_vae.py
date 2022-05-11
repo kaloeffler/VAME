@@ -9,6 +9,7 @@ https://github.com/LINCellularNeuroscience/VAME
 Licensed under GNU General Public License v3.0
 """
 
+from statistics import mode
 import torch
 from torch import nn
 import torch.utils.data as Data
@@ -19,9 +20,12 @@ import os
 import numpy as np
 from pathlib import Path
 
-from vame.util.auxiliary import read_config
+from vame.util.auxiliary import read_config, write_config
 from vame.model.dataloader import SEQUENCE_DATASET
 from vame.model.rnn_model import RNN_VAE, RNN_VAE_LEGACY
+from datetime import datetime
+import shutil
+
 
 # make sure torch uses cuda for GPU computing
 use_gpu = torch.cuda.is_available()
@@ -292,15 +296,19 @@ def train_model(config):
     legacy = cfg["legacy"]
     model_name = cfg["model_name"]
     pretrained_weights = cfg["pretrained_weights"]
-    pretrained_model = cfg["pretrained_model"]
 
     print("Train Variational Autoencoder - model name: %s \n" % model_name)
-    if not os.path.exists(os.path.join(cfg["project_path"], "model", "best_model", "")):
-        os.mkdir(os.path.join(cfg["project_path"], "model", "best_model", ""))
-        os.mkdir(
-            os.path.join(cfg["project_path"], "model", "best_model", "snapshots", "")
-        )
-        os.mkdir(os.path.join(cfg["project_path"], "model", "model_losses", ""))
+    # add model path to config?
+    time_stamp = datetime.today().strftime("%m-%d-%Y-%H-%M")
+    model_path = os.path.join(os.path.join(cfg["project_path"], "model", time_stamp))
+
+    if not os.path.exists(os.path.join(model_path, "best_model", "")):
+        os.makedirs(os.path.join(model_path, "best_model", ""))
+        os.makedirs(os.path.join(model_path, "best_model", "snapshots", ""))
+        os.makedirs(os.path.join(model_path, "model_losses", ""))
+    # copy config file to keep the information of the current parametrization
+    cfg["time_stamp"] = time_stamp
+    write_config(os.path.join(model_path, os.path.basename(config_file)), cfg)
 
     # make sure torch uses cuda for GPU computing
     use_gpu = torch.cuda.is_available()
@@ -411,27 +419,20 @@ def train_model(config):
         ).to()
 
     if pretrained_weights:
-        if os.path.exists(
-            os.path.join(
-                cfg["project_path"],
-                "model",
-                "best_model",
-                pretrained_model + "_" + cfg["Project"] + ".pkl",
+        model_weights = [
+            os.path.join(cfg["pretrained_model_path"], "best_model", element[0])
+            for element in os.listdir(
+                os.path.join(cfg["pretrained_model_path"], "best_model")
             )
-        ):
-            print("Loading pretrained weights from model: %s\n" % pretrained_model)
-            model.load_state_dict(
-                torch.load(
-                    os.path.join(
-                        cfg["project_path"],
-                        "model",
-                        "best_model",
-                        pretrained_model + "_" + cfg["Project"] + ".pkl",
-                    )
-                )
-            )
-            KL_START = 0
-            ANNEALTIME = 1
+            if element.endswith(".pkl")
+        ]
+        assert len(model_weights) == 1, f"more than one model found: {model_weights}"
+        model_weights = model_weights[0]
+
+        print("Loading pretrained weights from model: %s\n" % model_weights)
+        model.load_state_dict(torch.load(model_weights))
+        KL_START = 0
+        ANNEALTIME = 1
 
     """ DATASET """
     trainset = SEQUENCE_DATASET(
@@ -533,8 +534,7 @@ def train_model(config):
                 torch.save(
                     model.state_dict(),
                     os.path.join(
-                        cfg["project_path"],
-                        "model",
+                        model_path,
                         "best_model",
                         model_name + "_" + cfg["Project"] + ".pkl",
                     ),
@@ -544,8 +544,7 @@ def train_model(config):
                 torch.save(
                     model.state_dict(),
                     os.path.join(
-                        cfg["project_path"],
-                        "model",
+                        model_path,
                         "best_model",
                         model_name + "_" + cfg["Project"] + ".pkl",
                     ),
@@ -560,8 +559,7 @@ def train_model(config):
             torch.save(
                 model.state_dict(),
                 os.path.join(
-                    cfg["project_path"],
-                    "model",
+                    model_path,
                     "best_model",
                     "snapshots",
                     model_name + "_" + cfg["Project"] + "_epoch_" + str(epoch) + ".pkl",
@@ -585,69 +583,35 @@ def train_model(config):
 
         # save logged losses
         np.save(
-            os.path.join(
-                cfg["project_path"],
-                "model",
-                "model_losses",
-                "train_losses_" + model_name,
-            ),
+            os.path.join(model_path, "model_losses", "train_losses_" + model_name,),
             train_losses,
         )
         np.save(
-            os.path.join(
-                cfg["project_path"],
-                "model",
-                "model_losses",
-                "test_losses_" + model_name,
-            ),
+            os.path.join(model_path, "model_losses", "test_losses_" + model_name,),
             test_losses,
         )
         np.save(
-            os.path.join(
-                cfg["project_path"],
-                "model",
-                "model_losses",
-                "kmeans_losses_" + model_name,
-            ),
+            os.path.join(model_path, "model_losses", "kmeans_losses_" + model_name,),
             kmeans_losses,
         )
         np.save(
-            os.path.join(
-                cfg["project_path"], "model", "model_losses", "kl_losses_" + model_name
-            ),
+            os.path.join(model_path, "model_losses", "kl_losses_" + model_name),
             kl_losses,
         )
         np.save(
-            os.path.join(
-                cfg["project_path"],
-                "model",
-                "model_losses",
-                "weight_values_" + model_name,
-            ),
+            os.path.join(model_path, "model_losses", "weight_values_" + model_name,),
             weight_values,
         )
         np.save(
-            os.path.join(
-                cfg["project_path"],
-                "model",
-                "model_losses",
-                "mse_train_losses_" + model_name,
-            ),
+            os.path.join(model_path, "model_losses", "mse_train_losses_" + model_name,),
             mse_losses,
         )
         np.save(
-            os.path.join(
-                cfg["project_path"],
-                "model",
-                "model_losses",
-                "mse_test_losses_" + model_name,
-            ),
+            os.path.join(model_path, "model_losses", "mse_test_losses_" + model_name,),
             current_loss,
         )
         np.save(
-            os.path.join(
-                cfg["project_path"], "model", "model_losses", "fut_losses_" + model_name
-            ),
+            os.path.join(model_path, "model_losses", "fut_losses_" + model_name),
             fut_losses,
         )
 

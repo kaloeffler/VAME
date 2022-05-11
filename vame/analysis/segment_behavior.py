@@ -52,10 +52,24 @@ def behavior_segmentation(
 
     for folders in cfg["video_sets"]:
         if not os.path.exists(
-            os.path.join(cfg["project_path"], "results", folders, "", model_name)
+            os.path.join(
+                cfg["project_path"],
+                "results",
+                cfg["time_stamp"],
+                folders,
+                "",
+                model_name,
+            )
         ):
             os.mkdir(
-                os.path.join(cfg["project_path"], "results", folders, "", model_name)
+                os.path.join(
+                    cfg["project_path"],
+                    "results",
+                    cfg["time_stamp"],
+                    folders,
+                    "",
+                    model_name,
+                )
             )
 
     files = []
@@ -152,6 +166,7 @@ def temporal_quant(cfg, model_name, files, use_gpu):
                     os.path.join(
                         cfg["project_path"],
                         "model",
+                        cfg["time_stamp"],
                         "best_model",
                         "snapshots",
                         model_name
@@ -169,6 +184,7 @@ def temporal_quant(cfg, model_name, files, use_gpu):
                     os.path.join(
                         cfg["project_path"],
                         "model",
+                        cfg["time_stamp"],
                         "best_model",
                         "snapshots",
                         model_name
@@ -188,6 +204,7 @@ def temporal_quant(cfg, model_name, files, use_gpu):
                     os.path.join(
                         cfg["project_path"],
                         "model",
+                        cfg["time_stamp"],
                         "best_model",
                         model_name + "_" + cfg["Project"] + ".pkl",
                     )
@@ -199,6 +216,7 @@ def temporal_quant(cfg, model_name, files, use_gpu):
                     os.path.join(
                         cfg["project_path"],
                         "model",
+                        cfg["time_stamp"],
                         "best_model",
                         model_name + "_" + cfg["Project"] + ".pkl",
                     ),
@@ -278,6 +296,7 @@ def cluster_latent_space(
                 os.path.join(
                     cfg["project_path"],
                     "results",
+                    cfg["time_stamp"],
                     file,
                     "",
                     model_name,
@@ -289,6 +308,7 @@ def cluster_latent_space(
                     os.path.join(
                         cfg["project_path"],
                         "results",
+                        cfg["time_stamp"],
                         file,
                         "",
                         model_name,
@@ -298,7 +318,13 @@ def cluster_latent_space(
                 )
 
             save_data = os.path.join(
-                cfg["project_path"], "results", file, "", model_name, ""
+                cfg["project_path"],
+                "results",
+                cfg["time_stamp"],
+                file,
+                "",
+                model_name,
+                "",
             )
             z_latent = z_data[z_logger[idx] : z_logger[idx + 1], :]
             labels = data_labels[z_logger[idx] : z_logger[idx + 1]]

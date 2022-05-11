@@ -73,6 +73,7 @@ def traindata(cfg, files, testfraction, num_features, savgol_filter):
     X = np.concatenate(X_train, axis=0)
     # X_std = np.std(X)
 
+    # here the two time series with the smallest std are removed from the dataset - but why?
     detect_anchors = np.std(data, axis=1)
     sort_anchors = np.sort(detect_anchors)
     if sort_anchors[0] == sort_anchors[1]:
