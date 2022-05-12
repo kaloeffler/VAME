@@ -16,45 +16,63 @@ import tqdm
 from pathlib import Path
 from vame.util.auxiliary import read_config
 
-# Returns cropped image using rect tuple
-def crop_and_flip(rect, src, points, ref_index):
-    # Read out rect structures and convert
-    center, size, theta = rect
-    center, size = tuple(map(int, center)), tuple(map(int, size))
-    # Get rotation matrix
-    M = cv.getRotationMatrix2D(center, theta, 1)
 
+def find_rotation_matrix(landmarks, alignment_idx, min_spanning_rectangle):
+    """Compute all possible rotations of the min spanning rectangle such that
+    the points selected for the right to left alignment will have the most left / most right
+    coordinate position."""
+    center, size, theta = min_spanning_rectangle
+    center, size = tuple(map(int, center)), tuple(map(int, size))
+    rot_matrices = [
+        cv.getRotationMatrix2D(center, theta + angle, 1) for angle in [0, 90, 180, 270]
+    ]
     # shift DLC points
     x_diff = center[0] - size[0] // 2
     y_diff = center[1] - size[1] // 2
 
-    dlc_points_shifted = cv.transform(
-        np.array(points).reshape(1, -1, 2), M
-    ).squeeze() - np.array([x_diff, y_diff]).reshape(1, 2)
+    # shape = (4,N_landmarks,2)
+    rotated_landmarks = np.array(
+        [
+            cv.transform(np.array(landmarks).reshape(1, -1, 2), rot_mat).squeeze()
+            - np.array([x_diff, y_diff]).reshape(1, 2)
+            for rot_mat in rot_matrices
+        ]
+    )
+    rotated_ref_points = rotated_landmarks[:, alignment_idx, :]
+    # select the rotation matrix such that the left aligment point (e.g. tailroot)
+    # will be the most left possible (smallest x coordinate) and the right alignment point (e.g. head)
+    # will be the right most possible (largest x coordinate)
+    # to select the best rotation rank the coordinates of each alignment point
+    # left alignment point: most left (smallest x):1; most right (largest x coord):4
+    # right alignment point: most left (smallest x):4; most right (largest x coord):1
+    # then calc the rank sum and select the smallest to find the best rotation
+    ids = np.arange(0, 4)
+    sorted_idx_left = np.argsort(rotated_ref_points[:, 1, 0])
+    ranking_left = np.argmax(
+        ids.reshape(-1, 1) == sorted_idx_left.reshape(1, -1), axis=1
+    )
+
+    # since the sort is ascending, make it descending
+    sorted_idx_right = np.argsort(rotated_ref_points[:, 0, 0])[::-1]
+    ranking_right = np.argmax(
+        ids.reshape(-1, 1) == sorted_idx_right.reshape(1, -1), axis=1
+    )
+    rank_sum = ranking_left + ranking_right
+    rotation_idx = np.argmin(rank_sum)
+    return rotated_landmarks[rotation_idx], rot_matrices[rotation_idx]
+
+
+# Returns cropped image using rect tuple
+def crop_and_flip(rect, src, points, ref_index):
+    # Read out rect structures and convert
+    dlc_points_shifted, M = find_rotation_matrix(points, ref_index, rect)
 
     # Perform rotation on src image
     dst = cv.warpAffine(src.astype("float32"), M, src.shape[:2])
+
+    center, size, _ = rect
+    center, size = tuple(map(int, center)), tuple(map(int, size))
     out = cv.getRectSubPix(dst, size, center)
-
-    # check if flipped correctly, otherwise flip again
-    if dlc_points_shifted[ref_index[1]][0] >= dlc_points_shifted[ref_index[0]][0]:
-        rect = ((size[0] // 2, size[0] // 2), size, 180)
-        center, size, theta = rect
-        center, size = tuple(map(int, center)), tuple(map(int, size))
-        # Get rotation matrix
-        M = cv.getRotationMatrix2D(center, theta, 1)
-
-        # shift DLC points
-        x_diff = center[0] - size[0] // 2
-        y_diff = center[1] - size[1] // 2
-
-        dlc_points_shifted = cv.transform(
-            np.array(dlc_points_shifted).reshape(1, -1, 2), M
-        ).squeeze() - np.array([x_diff, y_diff]).reshape(1, 2)
-
-        # Perform rotation on src image
-        dst = cv.warpAffine(out.astype("float32"), M, out.shape[:2])
-        out = cv.getRectSubPix(dst, size, center)
 
     return out, list(dlc_points_shifted)
 
@@ -345,7 +363,6 @@ def alignment(
         frame_count = len(
             data
         )  # Change this to an abitrary number if you first want to test the code
-
     frames, n, time_series = align_mouse(
         path_to_file,
         filename,
