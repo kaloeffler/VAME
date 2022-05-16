@@ -30,6 +30,9 @@ dependencies:
   - pip:
       - umap-learn
       - opencv-python-headless
+      - ipympl
+      - ffmpeg-python
+
 
 
 
