@@ -10,11 +10,13 @@ from sklearn.neighbors import NearestNeighbors
 import matplotlib.pyplot as plt
 from vame.analysis.visualize import create_pose_snipplet
 import pandas as pd
-
+import matplotlib.pyplot as plt
 
 PROJECT_PATH = "/home/katharina/vame_approach/themis_tail_belly_align"
-subsample = 120
-selected_idx = 80
+# multiply with window length to find
+min_dist_nn_factor = 2
+dist_between_neighbors_factor = 0.5
+selected_idx = 100
 # load the CONFIG FILE from the last trained model
 trained_models = [
     (datetime.strptime(element, "%m-%d-%Y-%H-%M"), element)
@@ -74,24 +76,44 @@ for landmark_file in config["video_sets"]:
 
     # calc for each latent vector its N nearest neighbors
     print("Calc neighbors")
-    landmark_idx = np.arange(0, latent_vectors.shape[0])[::subsample]
-    latent_vectors = latent_vectors[::subsample]
-    neighbors = NearestNeighbors(n_neighbors=4).fit(latent_vectors)
-    dist, neighbor_idx = neighbors.kneighbors(latent_vectors)
-    print(neighbor_idx.shape)
-    # TODO: eval if the points close in temporal domain also close in latent space
-    # get idx -> calc dist between idx
-    temp_dist = np.arange(0, len(latent_vectors)).reshape(-1, 1) - np.array(
-        neighbor_idx
+    # remove time steps arround selected vector
+    window_start = max(
+        0, selected_idx - int(config["time_window"] * min_dist_nn_factor)
+    )
+    window_end = min(
+        len(latent_vectors),
+        selected_idx + int(config["time_window"] * min_dist_nn_factor),
     )
 
-    anchor_idx = landmark_idx[selected_idx]
+    selected_data = latent_vectors[selected_idx, :]
+    time_points = np.arange(0, latent_vectors.shape[0])
+    time_points = np.concatenate(
+        [time_points[0:window_start], time_points[window_end:-1]]
+    )
+    latent_vectors = np.concatenate(
+        [latent_vectors[0:window_start], latent_vectors[window_end:-1]]
+    )
+
+    neighbors = NearestNeighbors(n_neighbors=4).fit(latent_vectors)
+    dist, neighbor_idx = neighbors.kneighbors(selected_data.reshape(1, -1))
+    print(neighbor_idx.shape)
+    # all dist to selected latent vector
+    dist = np.sqrt(np.sum((latent_vectors - selected_data.reshape(1, -1)) ** 2, axis=1))
+    dist_temporal = np.sqrt((time_points - selected_idx) ** 2)
+    plt.hist(dist, bins=10)
+    # todo: plot dist vs time
+    plt.figure()
+    plt.plot(dist_temporal, dist)
+    # TODO: embed with umap
+
+    anchor_idx = time_points[selected_idx]
     # skip the first neighbor since the latent vector itself is always closest to itself
-    nearest_idx = landmark_idx[neighbor_idx[selected_idx]][1:]
+    nearest_idx = time_points[neighbor_idx[selected_idx]]
     # TODO: find for each label the real world example that is closest to the cluster center
     video_path = os.path.join(
         PROJECT_PATH,
         "results",
+        latest_model,
         landmark_file,
         "visualization",
         "pose_sniplets_" + str(anchor_idx),
