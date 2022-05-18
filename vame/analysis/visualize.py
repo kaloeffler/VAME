@@ -9,6 +9,8 @@ import numpy as np
 import os
 from vame.util.align_egocentrical import interpol, crop_and_flip, play_aligned_video
 import tqdm
+from pathlib import Path
+from vame.analysis.kinutils import KinVideo, create_grid_video
 
 
 def create_pose_snipplet(
@@ -207,3 +209,87 @@ def crop_img(rect, src):
     out = cv.getRectSubPix(src, size, center)
 
     return out
+
+
+def create_visual_comparison(
+    anchor_idx: int,
+    latent_vectors: np.array,
+    min_frame_distance: int,
+    video_file: str,
+    clip_length: float,
+    upper_dist_percentile: int = 80,
+):
+    """Create two videos with little video clips arranged in a matrix, where the first video shows
+    the video clip corresponding to the selected anchor embedding together with the video 
+    clips corresponding to its nearest neighbors in the latent space. The second video shows the anchor
+    video clip and video clips corresponding to the embeddings that belong to the upper_dist_percentile percentile
+    concerning their distance wrt. the anchor embedding.
+
+    Args:
+        anchor_idx (int): time index to select as anchor embedding
+        latent_vectors (np.array): a matrix of shape (N_timepoints, M_embedding) where each row represents an embedding vector
+        min_frame_distance (int): min distance in frames between anchor and close neighbors as well as between close neighbor since the latent
+                                    vectors correspond with highly overlapping time series in the temporal domain
+        video_file (str): path to the video file from which the latent vectors where predicted
+        clip_length (float): lenght of the video clips in seconds
+        upper_dist_percentile (int, optional): _description_. Defaults to 80.
+    """
+    n_samples = 8
+
+    window_start = max(0, anchor_idx - min_frame_distance)
+    window_end = min(len(latent_vectors), anchor_idx + min_frame_distance)
+    selected_latent_vector = latent_vectors[anchor_idx, :]
+
+    all_distances = np.sqrt(
+        np.sum((latent_vectors - selected_latent_vector.reshape(1, -1)) ** 2, axis=1)
+    )
+
+    time_points = np.arange(0, latent_vectors.shape[0])
+    time_points = np.concatenate(
+        [time_points[0:window_start], time_points[window_end:-1]]
+    )
+    latent_vectors = np.concatenate(
+        [latent_vectors[0:window_start], latent_vectors[window_end:-1]]
+    )
+    # distances between each latent vector and the selected one excluding the distances of latent vectors corresponding to temporally close frames
+    dist = np.concatenate([all_distances[0:window_start], all_distances[window_end:-1]])
+
+    # select n neighbors, and enshure the neighbors are separated by a min time span
+    selected_neighbor_idx = []
+    while len(selected_neighbor_idx) < n_samples and len(dist) > 0:
+        n_idx = np.argmin(dist)
+        selected_neighbor_idx.append(time_points[n_idx])
+        # remove all distances close to the selected anchor
+        is_far_away = np.abs(time_points - time_points[n_idx]) > min_frame_distance
+        dist = dist[is_far_away]
+        time_points = time_points[is_far_away]
+
+    samples_close = [anchor_idx, *selected_neighbor_idx]
+
+    # generate "matrix" of video clips
+    camera_pos, video_name = Path(video_file).parts[-2:]
+    video = KinVideo(video_file, view=camera_pos)
+    video.probevid()
+    video_clip_data = [
+        (video_file, t_id / video.getfps(), (0, 0, video.width, video.height))
+        for t_id in samples_close
+    ]
+    grid_video_name_close = create_grid_video(video_clip_data, clip_length, speed=0.5)
+
+    # sample latent vectors which are far away from the anchor embedding in the latent space
+    dist_thr = np.percentile(all_distances, upper_dist_percentile)
+    time_idx_other = np.where(all_distances > dist_thr)[0].reshape(-1)
+    selected_distant_idx = np.random.choice(time_idx_other, 8, replace=False)
+
+    samples_distant = [anchor_idx, *selected_distant_idx]
+    # generate "matrix" of video clips
+    video_clip_data_distant = [
+        (video_file, t_id / video.getfps(), (0, 0, video.width, video.height))
+        for t_id in samples_distant
+    ]
+    print(video_clip_data)
+    grid_video_name_distant = create_grid_video(
+        video_clip_data_distant, clip_length, speed=0.5
+    )
+
+    return grid_video_name_close, grid_video_name_distant
