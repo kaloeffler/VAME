@@ -947,12 +947,13 @@ def create_grid_video(
             "scale", w=outwidth, h=outheight, force_original_aspect_ratio="disable"
         )
         .filter_("setsar", r="1/1")
+        .drawbox(x=0, y=0, width=outwidth, height=13, color="Black@0.8", thickness=10)
         .drawtext(
             text=f'{inclip [0].split ("/") [-1]}/{inclip [1]:.2f}',
-            fontcolor="Red",
-            fontsize=32,
-            x=20,
-            y=20,
+            fontcolor="Cyan",
+            fontsize=10,
+            x=5,
+            y=5,
         )
         for clip, inclip in zip(clips, inputs)
     ]
