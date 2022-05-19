@@ -1,4 +1,5 @@
 """Create additional visualizations to analyze the quality of the learned embeddings"""
+from time import time
 import cv2 as cv
 import numpy as np
 from matplotlib import cm
@@ -218,6 +219,8 @@ def create_visual_comparison(
     video_file: str,
     clip_length: float,
     upper_dist_percentile: int = 80,
+    time_idx: list = None,
+    return_sampled_idx: bool = False,
 ):
     """Create two videos with little video clips arranged in a matrix, where the first video shows
     the video clip corresponding to the selected anchor embedding together with the video 
@@ -226,33 +229,37 @@ def create_visual_comparison(
     concerning their distance wrt. the anchor embedding.
 
     Args:
-        anchor_idx (int): time index to select as anchor embedding
+        anchor_idx (int): row index to select as anchor embedding
         latent_vectors (np.array): a matrix of shape (N_timepoints, M_embedding) where each row represents an embedding vector
         min_frame_distance (int): min distance in frames between anchor and close neighbors as well as between close neighbor since the latent
                                     vectors correspond with highly overlapping time series in the temporal domain
         video_file (str): path to the video file from which the latent vectors where predicted
         clip_length (float): lenght of the video clips in seconds
-        upper_dist_percentile (int, optional): _description_. Defaults to 80.
+        upper_dist_percentile (int, optional): Sampling of the distant embeddings from the upper distance percentile. Defaults to 80.
+        time_idx (list, optional): If a list of time_idx is provided they will be used as time index
+        return_sampled_idx (bool, optional): if true return the time idx of the selected samples
     """
     n_samples = 8
 
-    window_start = max(0, anchor_idx - min_frame_distance)
-    window_end = min(len(latent_vectors), anchor_idx + min_frame_distance)
+    if time_idx is None:
+        time_points = np.arange(0, latent_vectors.shape[0])
+    else:
+        time_points = time_idx
+
+    time_anchor_idx = time_points[anchor_idx]
     selected_latent_vector = latent_vectors[anchor_idx, :]
 
     all_distances = np.sqrt(
         np.sum((latent_vectors - selected_latent_vector.reshape(1, -1)) ** 2, axis=1)
     )
 
-    time_points = np.arange(0, latent_vectors.shape[0])
-    time_points = np.concatenate(
-        [time_points[0:window_start], time_points[window_end:-1]]
+    is_distant_to_anchor = (
+        np.abs(time_points - time_points[anchor_idx]) > min_frame_distance
     )
-    latent_vectors = np.concatenate(
-        [latent_vectors[0:window_start], latent_vectors[window_end:-1]]
-    )
+    time_points = time_points[is_distant_to_anchor]
+    latent_vectors = latent_vectors[is_distant_to_anchor]
     # distances between each latent vector and the selected one excluding the distances of latent vectors corresponding to temporally close frames
-    dist = np.concatenate([all_distances[0:window_start], all_distances[window_end:-1]])
+    dist = all_distances[is_distant_to_anchor]
 
     # select n neighbors, and enshure the neighbors are separated by a min time span
     selected_neighbor_idx = []
@@ -264,7 +271,7 @@ def create_visual_comparison(
         dist = dist[is_far_away]
         time_points = time_points[is_far_away]
 
-    samples_close = [anchor_idx, *selected_neighbor_idx]
+    samples_close = [time_anchor_idx, *selected_neighbor_idx]
 
     # generate "matrix" of video clips
     camera_pos, video_name = Path(video_file).parts[-2:]
@@ -277,11 +284,11 @@ def create_visual_comparison(
     grid_video_name_close = create_grid_video(video_clip_data, clip_length, speed=0.5)
 
     # sample latent vectors which are far away from the anchor embedding in the latent space
-    dist_thr = np.percentile(all_distances, upper_dist_percentile)
-    time_idx_other = np.where(all_distances > dist_thr)[0].reshape(-1)
+    dist_thr = np.percentile(dist, upper_dist_percentile)
+    time_idx_other = time_points[dist > dist_thr]
     selected_distant_idx = np.random.choice(time_idx_other, 8, replace=False)
 
-    samples_distant = [anchor_idx, *selected_distant_idx]
+    samples_distant = [time_anchor_idx, *selected_distant_idx]
     # generate "matrix" of video clips
     video_clip_data_distant = [
         (video_file, t_id / video.getfps(), (0, 0, video.width, video.height))
