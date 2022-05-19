@@ -298,5 +298,77 @@ def create_visual_comparison(
     grid_video_name_distant = create_grid_video(
         video_clip_data_distant, clip_length, speed=0.5
     )
-
+    if return_sampled_idx:
+        return (
+            grid_video_name_close,
+            grid_video_name_distant,
+            samples_close,
+            samples_distant,
+        )
     return grid_video_name_close, grid_video_name_distant
+
+
+def thin_dataset_iteratively(
+    latent_vectors: np.array,
+    remaining_fraction: float,
+    neighbor_percentile: float,
+    min_frame_distance: int,
+):
+    """Reduce the strong temporal dependence of embeddings close in the latent space
+    by sampling repeatety an embedding and removing its temproally nearest neighbors
+    if they are also closest to it in the latent space
+
+    Args:
+        latent_vectors (np.array): a matrix of shape (N_timepoints, M_embedding) where each row represents an embedding vector
+        remaining_percentage (float): breaking condition to stop the thinning of data
+        neighbor_percentile (float): 0...100 - percentage of latent vectors that will be based on their distance to
+                                    the sampled anchor considered as neighbors. Based on this selected neighbors all embeddings that are temporally
+                                    too close to the sampled embedding will be removed
+        min_frame_distance (int): minimum temporal distance between a neighboring embedding to the selected anchor to be not removed from the
+        dataset
+    """
+
+    time_points = np.arange(0, latent_vectors.shape[0])
+    remaining_vectors = np.ones(latent_vectors.shape[0]).astype(bool)
+    untested_vectors = np.ones(latent_vectors.shape[0]).astype(bool)
+    sampled_anchors = []
+    min_data_size = latent_vectors.shape[0] * remaining_fraction
+    counter = 0
+    while sum(untested_vectors) > 0 and sum(remaining_vectors) > min_data_size:
+        sampled_idx = np.random.choice(time_points[untested_vectors])
+        untested_vectors[sampled_idx] = False
+        sampled_anchors.append(sampled_idx)
+        dist = np.sqrt(
+            np.sum(
+                (
+                    latent_vectors[remaining_vectors]
+                    - latent_vectors[sampled_idx].reshape(1, -1)
+                )
+                ** 2,
+                axis=1,
+            )
+        )
+
+        dist_thr = np.percentile(dist, neighbor_percentile)
+        neighbor_idx = time_points[remaining_vectors][dist < dist_thr]
+        neighbor_idx = neighbor_idx[neighbor_idx != sampled_idx]
+
+        temp_diff = np.abs(neighbor_idx - sampled_idx)
+        temp_close_neighbors = neighbor_idx[temp_diff < min_frame_distance]
+
+        # keep the vectors that where previously sampled as anchors
+        temp_close_neighbors = temp_close_neighbors[
+            ~np.isin(temp_close_neighbors, np.array(sampled_idx))
+        ]
+        # reduce time points
+        remaining_vectors[temp_close_neighbors] = False
+        untested_vectors[temp_close_neighbors] = False
+
+        counter += 1
+        if counter > 100:
+            print(
+                f"Untested: {sum(untested_vectors)}, Remaining: {sum(remaining_vectors)}"
+            )
+            counter = 0
+
+    return latent_vectors[remaining_vectors], time_points[remaining_vectors]
