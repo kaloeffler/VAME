@@ -4,11 +4,10 @@ import cv2 as cv
 import numpy as np
 from matplotlib import cm
 from matplotlib.colors import to_rgb
-from vame.util.align_egocentrical_themis import align_mouse
 import pandas as pd
 import numpy as np
 import os
-from vame.util.align_egocentrical import interpol, crop_and_flip, play_aligned_video
+from vame.util.align_egocentrical import interpol
 import tqdm
 from pathlib import Path
 from vame.analysis.kinutils import KinVideo, create_grid_video
@@ -61,7 +60,6 @@ def create_pose_snipplet(
 def create_aligned_mouse_video(
     video_file: str,
     landmark_file: str,
-    align_landmark_idx: tuple,
     save_aligned_video_path: str,
     crop_size=(300, 300),
     confidence=0.1,
@@ -71,7 +69,6 @@ def create_aligned_mouse_video(
     Args:
         video_file (str): path to the orginal video
         landmark_file (str): path to the landmarks based on which to align the data
-        align_landmark_idx (tuple): pair of landmarks based on which the video will be aligned
         save_aligned_video_path (str): path to the directory where the aligned video will be saved
         crop_size (tuple): size of the aligned video
     """
@@ -85,24 +82,13 @@ def create_aligned_mouse_video(
     for i in range(int(data_mat.shape[1] / 3)):
         pose_list.append(data_mat[:, i * 3 : (i + 1) * 3])
 
-    # list of reference coordinate indices for alignment
-    # 0: snout, 1: forehand_left, 2: forehand_right,
-    # 3: hindleft, 4: hindright, 5: tail
-
-    pose_ref_index = align_landmark_idx
-
-    # list of 2 reference coordinate indices for avoiding flipping
-    pose_flip_ref = pose_ref_index
-
     frame_count = len(data)
     align_mouse_video(
         video_file,
         save_aligned_video_path,
         crop_size,
         pose_list,
-        pose_ref_index,
         confidence,
-        pose_flip_ref,
         frame_count,
     )
 
@@ -110,14 +96,7 @@ def create_aligned_mouse_video(
 
 
 def align_mouse_video(
-    video_file,
-    save_aligned_video_path,
-    crop_size,
-    pose_list,
-    pose_ref_index,
-    confidence,
-    pose_flip_ref,
-    frame_count,
+    video_file, save_aligned_video_path, crop_size, pose_list, confidence, frame_count,
 ):
     # returns: list of cropped images (if video is used) and list of cropped DLC points
     #
@@ -127,8 +106,7 @@ def align_mouse_video(
     # save_aligned_video_path: path where the aligned video file will be stored
     # crop_size: tuple of x and y crop size
     # pose_list: list of arrays containg corresponding x and y DLC values
-    # pose_ref_index: indices of 2 lists in dlc_list to align mouse along
-    # pose_flip_ref: indices of 2 lists in dlc_list to flip mouse if flip was false
+    # confidence: threshold based on which landmarks will be replaced by an interpolation of temporally close landmarks
     # frame_count: number of frames to align
 
     # get path to the corresponding video file
