@@ -32,6 +32,8 @@ dependencies:
       - opencv-python-headless
       - ipympl
       - ffmpeg-python
+      - torchinfo
+      - fuzzy-c-means
 
 
 
