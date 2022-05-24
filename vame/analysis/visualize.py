@@ -11,6 +11,7 @@ from vame.util.align_egocentrical import interpol
 import tqdm
 from pathlib import Path
 from vame.analysis.kinutils import KinVideo, create_grid_video
+from scipy.spatial.distance import cdist
 
 
 def create_pose_snipplet(
@@ -350,3 +351,64 @@ def thin_dataset_iteratively(
             counter = 0
 
     return latent_vectors[remaining_vectors], time_points[remaining_vectors]
+
+
+def find_percentile_threshold(
+    latent_vectors: np.array,
+    time_window: int,
+    time_idx: list = None,
+    test_fraction: float = 0.01,
+):
+    """Compute the percentile in which temporally close neighbors dominate the
+    neighborhood in the latent space. This percentile can then be used to dilute samples.
+
+    Args:
+        latent_vectors (np.array): a matrix of shape (N_timepoints, M_embedding) where each row represents an embedding vector
+        time_idx (list, optional): If provided time idx of the corresponding temporal frames, otherwise it is assumed that neighboring latent vectors in the array correspond with
+                                    with time series that are shifted by one step. Defaults to None.
+        time_window (int): min distance between the time series corresponding to the latent vectors to be not considered as temporally close
+        test_fraction (float, optional): fraction of latent vectors to sample from the dataset. Defaults to 0.01
+    """
+    # todo: sample n% of vectors - calc how many frames
+    if time_idx is None:
+        time_idx = np.arange(0, len(latent_vectors))
+    else:
+        assert len(latent_vectors) == len(
+            time_idx
+        ), "Latent vectors and time idx have different lenghts"
+    sampled_ids = np.random.choice(
+        len(latent_vectors), int(len(latent_vectors) * test_fraction), replace=False
+    )
+    time_sampled_idx = time_idx[sampled_ids]
+    # output shape: M_samples, N_all_vectors
+    dists = cdist(latent_vectors[sampled_ids], latent_vectors)
+
+    # sort by distance
+    idx_sorted = np.argsort(dists, axis=1)
+    time_idx_sorted = time_idx[idx_sorted]
+
+    is_temp_neighbor = (
+        np.abs(time_idx_sorted - time_sampled_idx.reshape(-1, 1)) < time_window
+    )
+
+    cum_neighbor_count = np.cumsum(is_temp_neighbor, axis=1)
+    cum_position = np.arange(1, len(latent_vectors) + 1)
+
+    fraction_neighbors = cum_neighbor_count / cum_position.reshape(1, -1)
+
+    # find position in the sorted data where temp neighbors do not dominate the neighborhood in latent space
+    # anymore: e.g. less than 0.5 of the neighborhood are based on temp. close neighbors
+
+    # issue if the first neigbor is from another time point this would be idx:0
+    # therefore select latest time point where this is true
+    idx_neighbors = np.stack(
+        np.where(fraction_neighbors > 0.5)
+    )  # this provides the first idx per row
+    index_neighbors = np.median(
+        [
+            max(idx_neighbors[1, idx_neighbors[0, :] == i_sample])
+            for i_sample in range(len(sampled_ids))
+        ]
+    )
+    neighbor_percentile = (index_neighbors + 1) / len(latent_vectors) * 100
+    return neighbor_percentile
