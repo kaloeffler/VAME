@@ -941,19 +941,24 @@ def create_grid_video(
     # Scale to size of grid boxes.
     # Draw text on each grid box view.
     # #
+    fontsize = int(30 * outheight / height)
+    box_height = int(outheight / fontsize * 1.01)
+
     clips = [
         clip.filter_("fps", fps)
         .filter_(
             "scale", w=outwidth, h=outheight, force_original_aspect_ratio="disable"
         )
         .filter_("setsar", r="1/1")
-        .drawbox(x=0, y=0, width=outwidth, height=13, color="Black@0.8", thickness=10)
+        .drawbox(
+            x=0, y=0, width=outwidth, height=box_height, color="Black@0.8", thickness=10
+        )
         .drawtext(
             text=f'{inclip [0].split ("/") [-1]}/{inclip [1]:.2f}',
             fontcolor="Cyan",
-            fontsize=10,
-            x=5,
-            y=5,
+            fontsize=fontsize,
+            x=1,
+            y=1,
         )
         for clip, inclip in zip(clips, inputs)
     ]
