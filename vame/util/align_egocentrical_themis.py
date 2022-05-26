@@ -45,13 +45,16 @@ def align_mouse(
     points = []
 
     # get path to the corresponding video file
-    video_df = pd.read_csv(os.path.join(project_dir, "video_info.csv"))
-    video_id = int(re.findall(r"\d+", landmark_file_name)[0])
-    video_file = os.path.join(
-        *video_df[video_df["video_id"] == video_id][["vid_folder", "vid_file"]].values[
-            0
-        ]
-    )
+    if use_video:
+        video_df = pd.read_csv(os.path.join(project_dir, "video_info.csv"))
+        video_id = int(re.findall(r"\d+", landmark_file_name)[0])
+        video_file = os.path.join(
+            *video_df[video_df["video_id"] == video_id][
+                ["vid_folder", "vid_file"]
+            ].values[0]
+        )
+    else:
+        video_file = None
 
     for i in pose_list:
         for j in i:
