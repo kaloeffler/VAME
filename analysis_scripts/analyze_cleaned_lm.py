@@ -18,7 +18,7 @@ import tqdm
 import cv2 as cv
 from matplotlib.colors import to_rgb
 
-project_path = "/home/katharina/vame_approach/themis_dummy/"
+project_path = "/home/katharina/vame_approach/themis_tail_belly_align/"
 REMOVE_CHANNELS = False
 
 
@@ -57,8 +57,8 @@ for file in landmark_seq_files:
 
     iqr_factor = config["iqr_factor"]
     print(f"Num values outside +-{iqr_factor}*{iqr_val}: {sum(values_outside)}")
-
-    x_normalized[values_outside, :] = interpol(x_normalized[values_outside, :])
+    if sum(values_outside) > 0:
+        x_normalized[values_outside, :] = interpol(x_normalized[values_outside, :])
 
     if REMOVE_CHANNELS:
         detect_anchors = np.std(data, axis=1)
@@ -142,7 +142,7 @@ for file in landmark_seq_files:
     offset_smooth = np.array([pos_smooth, spacing])
     offset_norm = np.array([pos_normalized, spacing])
     offset_overlay = np.array([pos_overlay, spacing])
-    offset_titles = np.array([0,-10])
+    offset_titles = np.array([0, -10])
     for i_frame, (x_norm, x_smooth) in tqdm.tqdm(
         enumerate(zip(x_normalized, x_smoothed)),
         disable=not True,
@@ -151,32 +151,32 @@ for file in landmark_seq_files:
 
         frame = cv.cvtColor((dummy_frame * 255).astype("uint8"), cv.COLOR_GRAY2BGR)
         cv.putText(
-                frame,
-                "Aligned Landmarks",
-                tuple((offset_norm + offset_titles).astype(int)),
-                cv.FONT_HERSHEY_SIMPLEX,
-                0.4,
-                (0,0,0),
-                1,
-            )
+            frame,
+            "Aligned Landmarks",
+            tuple((offset_norm + offset_titles).astype(int)),
+            cv.FONT_HERSHEY_SIMPLEX,
+            0.4,
+            (0, 0, 0),
+            1,
+        )
         cv.putText(
-                frame,
-                "Landmarks After Smoothing",
-                tuple((offset_smooth + offset_titles).astype(int)),
-                cv.FONT_HERSHEY_SIMPLEX,
-                0.4,
-                (0,0,0),
-                1,
-            )
+            frame,
+            "Landmarks After Smoothing",
+            tuple((offset_smooth + offset_titles).astype(int)),
+            cv.FONT_HERSHEY_SIMPLEX,
+            0.4,
+            (0, 0, 0),
+            1,
+        )
         cv.putText(
-                frame,
-                "Overlay Landmarks Aligned / After Smoothing",
-                tuple((offset_overlay + offset_titles).astype(int)),
-                cv.FONT_HERSHEY_SIMPLEX,
-                0.4,
-                (0,0,0),
-                1,
-            )
+            frame,
+            "Overlay Landmarks Aligned / After Smoothing",
+            tuple((offset_overlay + offset_titles).astype(int)),
+            cv.FONT_HERSHEY_SIMPLEX,
+            0.4,
+            (0, 0, 0),
+            1,
+        )
         for i_lm, (lm_norm, lm_smooth) in enumerate(zip(x_norm.T, x_smooth.T)):
             # add for visualization mean and std again
             lm_norm = (lm_norm * x_std) + x_mean
