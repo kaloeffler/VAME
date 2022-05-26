@@ -16,10 +16,10 @@ PKL_ROOT = "/media/Themis/Data/Models/3843S2B10Gaussians/analyses"
 PROJECT_PATH = "/home/katharina/vame_approach/themis_tail_belly_align"
 
 CREATE_NEW_PROJECT = False
-PREP_TRAINING_DATA = False
+PREP_TRAINING_DATA = True
 TRAIN_MODEL = False
 EVAL_MODEL = False
-VISUALIZE_MODEL = True
+VISUALIZE_MODEL = False
 
 # create landmark.csv files including the landmark positions and likelihood (confidence scores)
 # similar to the DLC files and do some simple visualization of the confidence scores
@@ -51,7 +51,6 @@ if PREP_TRAINING_DATA:
     egocentric_alignment(
         PROJECT_PATH, pose_ref_index=[8, 16], use_video=False, check_video=False
     )
-    print()
     # 2.3 training data generation
     vame.create_trainset(config)
 if TRAIN_MODEL:
@@ -76,6 +75,9 @@ if VISUALIZE_MODEL:
     # 5 segment motifs/pose; output latent_vector..npy file
     vame.pose_segmentation(config)
 
+    # -> then run analysis_scipts/visualize_latent_space.ipynb to explore the latent space interactively
+
+    #### additional visualization options form the original VAME repo ###############
     # there are many options to for visualization
     # OPTIONIAL: Create motif videos to get insights about the fine grained poses
     # vame.motif_videos(config, videoType=".mp4")
@@ -87,10 +89,10 @@ if VISUALIZE_MODEL:
     # vame.community_videos(config)
 
     # OPTIONAL: Down projection of latent vectors and visualization via UMAP
-    for label in [None, "motif", "community"]:
-        vame.visualization(
-            config, label=None
-        )  # options: label: None, "motif", "community"
+    # for label in [None, "motif", "community"]:
+    #    vame.visualization(
+    #        config, label=None
+    #    )  # options: label: None, "motif", "community"
 
     # OPTIONAL: Use the generative model (reconstruction decoder) to sample from
     # the learned data distribution, reconstruct random real samples or visualize
@@ -104,14 +106,14 @@ if VISUALIZE_MODEL:
     # and have something cool to show around ;)
     # Note: This function is currently very slow. Once the frames are saved you can create a video
     # or gif via e.g. ImageJ or other tools
-    vame.gif(
-        config,
-        pose_ref_index=[0, 5],
-        subtract_background=False,
-        start=None,
-        length=5000,
-        max_lag=30,
-        label="community",
-        file_format=".mp4",
-        crop_size=(300, 300),
-    )
+    # vame.gif(
+    #    config,
+    #    pose_ref_index=[0, 5],
+    #    subtract_background=False,
+    #    start=None,
+    #    length=5000,
+    #    max_lag=30,
+    #    label="community",
+    #    file_format=".mp4",
+    #    crop_size=(300, 300),
+    # )
