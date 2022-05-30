@@ -1,5 +1,4 @@
 """Create additional visualizations to analyze the quality of the learned embeddings"""
-from time import time
 import cv2 as cv
 import numpy as np
 from matplotlib import cm
@@ -313,7 +312,7 @@ def thin_dataset_iteratively(
     sampled_anchors = []
     min_data_size = latent_vectors.shape[0] * remaining_fraction
     counter = 0
-    while sum(untested_vectors) > 0 and sum(remaining_vectors) > min_data_size:
+    while np.sum(untested_vectors) > 0 and np.sum(remaining_vectors) > min_data_size:
         sampled_idx = np.random.choice(time_points[untested_vectors])
         untested_vectors[sampled_idx] = False
         sampled_anchors.append(sampled_idx)
@@ -344,7 +343,7 @@ def thin_dataset_iteratively(
         untested_vectors[temp_close_neighbors] = False
 
         counter += 1
-        if counter > 100:
+        if counter > 500:
             print(
                 f"Untested: {sum(untested_vectors)}, Remaining: {sum(remaining_vectors)}"
             )
