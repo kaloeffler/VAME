@@ -411,3 +411,53 @@ def find_percentile_threshold(
     )
     neighbor_percentile = (index_neighbors + 1) / len(latent_vectors) * 100
     return neighbor_percentile
+
+
+def estimate_fuzzifier(N_data_points: int, M_feat_dim: int):
+    """Estimate the fuzzifier for fuzzy c-means using the empirical formula of 
+    Schwämmle and Jensen. Bioinformatics (2010)
+    Paper at: https://academic.oup.com/bioinformatics/article/26/22/2841/227572
+    Args:
+        N_data_points (int): number of datapoints
+        M_feat_dim (int): feature dimension
+    """
+
+    return (
+        1
+        + (1418 / N_data_points + 22.05) * M_feat_dim ** -2
+        + (12.33 / N_data_points + 0.243)
+        * M_feat_dim ** (-0.0406 * np.log(N_data_points) - 0.1134)
+    )
+
+
+def fukuyama_sugeno_index(
+    data: np.array, memberships: np.array, fcm_centroids: np.array, fuzziness: float
+):
+    """Calculate Fukuyama Sugeno index (Fukuyama and Sugeno, 1989) using the equation in the paper
+    of Schwämmle and Jensen. Bioinformatics (2010): https://academic.oup.com/bioinformatics/article/26/22/2841/227572
+
+    Args:
+        data (np.array): array of shape (N_samples, M_features)
+        memberships (np.array): array of shape (N_samples, K_clusters), where each entry is a membership score to a cluster with value 0...1
+        fcm_centroids (np.array): array of shape (K_clusters, M_features) predicted centroids of the fuzzy c means algorithm after fitting to the data
+        fuzziness (float): fuzziess score
+    """
+
+    data_mean = np.mean(data, axis=0)
+
+    # shape (1, K_clusters)
+    sq_diff_avg_centroids = np.sum(
+        np.abs(data_mean.reshape(1, -1) - fcm_centroids) ** 2, axis=1
+    )
+
+    # shape (N_features, K_clusters)??
+    sq_diff_sample_centroid = cdist(data, fcm_centroids) ** 2
+
+    # shape (N_features, K_clusters)??
+    diff = sq_diff_sample_centroid - sq_diff_avg_centroids  #
+
+    u = memberships ** fuzziness  # shape N, K
+
+    fs_index = np.sum(np.multiply(diff, u))
+
+    return fs_index
