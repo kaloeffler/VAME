@@ -15,6 +15,15 @@ PKL_ROOT = "/media/Themis/Data/Models/3843S2B10Gaussians/analyses"
 
 PROJECT_PATH = "/home/katharina/vame_approach/themis_tail_belly_align"
 
+# used to align the landmark files
+# landmarks by position in the landmarks files
+    # ['nose', 'head', 'forepawR1', 'forepawR2', 'forePawL1',
+    # 'forePawL2', 'chest1', 'chest2', 'belly1', 'belly2',
+    # 'hindpawR1', 'hindpawR2', 'hindpawR3', 'hindpawL1',
+    # 'hindpawL2', 'hindpawL3', 'tailbase']
+# belly1: 8, tailbase: 16
+pose_alignment_idx = [8, 16]
+
 CREATE_NEW_PROJECT = False
 PREP_TRAINING_DATA = True
 TRAIN_MODEL = False
@@ -24,13 +33,19 @@ VISUALIZE_MODEL = False
 # create landmark.csv files including the landmark positions and likelihood (confidence scores)
 # similar to the DLC files and do some simple visualization of the confidence scores
 
-
 # initialize new project
 if CREATE_NEW_PROJECT:
     config = init_new_project(PROJECT_PATH, VIDEO_ROOT, PKL_ROOT)
 else:
     config = os.path.join(PROJECT_PATH, "config.yaml")
 
+if not os.path.exists(
+    os.path.join(PROJECT_PATH, "data", "train", "pose_alignment_idx.npy")
+):
+    np.save(
+        os.path.join(PROJECT_PATH, "data", "train", "pose_alignment_idx.npy"),
+        np.array(pose_alignment_idx),
+    )
 # run lm_congf_quantiles.py to see the distribution of the confidence scores in the landmark
 # files and select a suitable threshold
 
@@ -49,7 +64,10 @@ if PREP_TRAINING_DATA:
     # belly1: 8, tailbase: 16
     # chest2: 7, tailbase: 16
     egocentric_alignment(
-        PROJECT_PATH, pose_ref_index=[8, 16], use_video=False, check_video=False
+        PROJECT_PATH,
+        pose_ref_index=pose_alignment_idx,
+        use_video=False,
+        check_video=False,
     )
     # 2.3 training data generation
     vame.create_trainset(config)

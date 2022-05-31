@@ -192,6 +192,10 @@ if __name__ == "__main__":
     pkl_file_name = os.path.basename(PKL_FILE).split(".")[0]
     landmark_file_name = "_".join(pkl_file_name.split("_")[:-1])
     landmark_file = os.path.join(pkl_file_dir, landmark_file_name + ".csv")
+    pose_alignment_idx = np.load(
+        os.path.join(PROJECT_PATH, "data", "train", "pose_alignment_idx.npy")
+    ).to_list()
+
     if True:
 
         if not os.path.exists(landmark_file):
@@ -209,7 +213,7 @@ if __name__ == "__main__":
         align_inference_data(
             save_landmark_file,
             config_file,
-            alignment_idx=[8, 16],
+            alignment_idx=pose_alignment_idx,
             save_dir=SAVE_DATA_PATH,
         )
 
