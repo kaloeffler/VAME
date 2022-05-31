@@ -51,22 +51,26 @@ def align_inference_data(
 
 
 def preprocess_inference_data(
-    aligned_data_file: str, config_file: str, time_idx_to_remove: list
+    aligned_data_file: str, config_file: str, train_data_path: str
 ):
     """Preprocess the aligned landmark data.
 
     Args:
         aligned_data_file (str): path to the aligned landmark data
         config_file (str): path to the config file
-        time_idx_to_remove (list): index of the time series that where removed from the initial training data
+        train_data_path (str): path to where the training data was stored
     """
     aligned_data = np.load(aligned_data_file)
     config = read_config(config_file)
 
+    time_idx_to_remove = np.load(
+        os.path.join(train_data_path, "timeseries_idx_deleted.npy")
+    )
+
     # apply mean and std from train data
-    # todo: check against using mean/std from train data
-    x_mean = np.mean(aligned_data, axis=None)
-    x_std = np.std(aligned_data, axis=None)
+    x_mean = np.load(os.path.join(train_data_path, "normalize_mean.npy"))
+
+    x_std = np.load(os.path.join(train_data_path, "normalize_std.npy"))
 
     x_z = (aligned_data.T - x_mean) / x_std
 
@@ -100,12 +104,18 @@ def preprocess_inference_data(
     np.save(file_name + "-clean." + ending, x)
 
 
-def inference(inference_data_files: list, config_file: str, save_res_path: str):
+def inference(
+    inference_data_files: list,
+    config_file: str,
+    train_data_path: str,
+    save_res_path: str,
+):
     """Predict from aligned, preprocessed landmark data files latent embeddings.
 
     Args:
         inference_data_file (list): list of paths to a preprocessed, aligned data files to predict latent embeddings from
         config_file (str): path to the config file
+        train_data_path (str): path where the training  data is stored
         save_res_path (str): path where the results will be stored
     """
     config = read_config(config_file)
@@ -113,7 +123,7 @@ def inference(inference_data_files: list, config_file: str, save_res_path: str):
 
     model = load_model(config, model_name, config["legacy"])
     latent_vectors_all = embedd_data(
-        inference_data_files, config, model, config["legacy"]
+        inference_data_files, config, model, config["legacy"], train_data_path
     )
 
     # todo: split latent vectors to sequences and save separately
@@ -134,7 +144,7 @@ def inference(inference_data_files: list, config_file: str, save_res_path: str):
         )
 
 
-def embedd_data(data_files, cfg, model, legacy):
+def embedd_data(data_files, cfg, model, legacy, train_data_path):
     temp_win = cfg["time_window"]
     num_features = cfg["num_features"]
     if legacy == False:
@@ -142,17 +152,26 @@ def embedd_data(data_files, cfg, model, legacy):
 
     latent_vector_files = []
 
+    # load mean and std from training data and normalize the data as
+    # in training: see SEQUENCE_DATASET in vame/model/dataloader.py
+    x_mean = np.load(os.path.join(train_data_path, "seq_mean.npy"))
+    x_std = np.load(os.path.join(train_data_path, "seq_std.npy"))
+
     for file in data_files:
         print("Embedd latent vectors for file %s" % file)
         data = np.load(file)
+        # TODO: apply sequence mean / std from training
         latent_vector_list = []
         with torch.no_grad():
             for i in tqdm.tqdm(range(data.shape[1] - temp_win)):
                 # for i in tqdm.tqdm(range(10000)):
                 data_sample_np = data[:, i : temp_win + i].T
                 data_sample_np = np.reshape(data_sample_np, (1, temp_win, num_features))
+                data_sample_normalized = (data_sample_np - x_mean) / x_std
                 h_n = model.encoder(
-                    torch.from_numpy(data_sample_np).type("torch.FloatTensor").cuda()
+                    torch.from_numpy(data_sample_normalized)
+                    .type("torch.FloatTensor")
+                    .cuda()
                 )
                 _, mu, _ = model.lmbda(h_n)
                 latent_vector_list.append(mu.cpu().data.numpy())
@@ -220,10 +239,8 @@ if __name__ == "__main__":
         aligned_data_file = os.path.join(
             SAVE_DATA_PATH, "data", pkl_file_name, pkl_file_name + "-PE-seq.npy",
         )
-        time_idx_to_remove = np.load(
-            os.path.join(PROJECT_PATH, "data", "train", "timeseries_idx_deleted.npy")
-        )
-        preprocess_inference_data(aligned_data_file, config_file, time_idx_to_remove)
+        train_data_dir = os.path.join(PROJECT_PATH, "data", "train")
+        preprocess_inference_data(aligned_data_file, config_file, train_data_dir)
 
     # TODO: collect automatically from the data folder
     dd = os.path.join(
@@ -233,7 +250,7 @@ if __name__ == "__main__":
 
     res_path = os.path.join(SAVE_DATA_PATH, "results")
     #  load model and predict embeddings for the aligned and preprocessed data files
-    inference(inference_data_files, config_file, res_path)
+    inference(inference_data_files, config_file, train_data_dir, res_path)
 
     # todo: evaluate the embeddings and compare to the orig found clusters?
     # e.g. fit on "train"data - cluster using the fcm fittet on train then vis clip matrices

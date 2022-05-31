@@ -115,6 +115,13 @@ def traindata(cfg, files, testfraction, num_features, savgol_filter):
     )
     np.save(os.path.join(cfg["project_path"], "data", "train", "test_seq.npy"), z_test)
 
+    np.save(
+        os.path.join(cfg["project_path"], "data", "train", "normalize_mean.npy"), X_mean
+    )
+    np.save(
+        os.path.join(cfg["project_path"], "data", "train", "normalize_std.npy"), X_std
+    )
+
     # save the idx that where removed from the training data
     # the original size of the time series is N_landmarks * 2
     deleted_idx = np.array([anchor_1, anchor_2]).astype(int)
