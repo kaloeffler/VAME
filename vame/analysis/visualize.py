@@ -128,7 +128,7 @@ def align_mouse_video(
     video_name, file_ending = os.path.basename(video_file).split(".")
     video_writer = cv.VideoWriter(
         os.path.join(save_aligned_video_path, "a" + video_name + "." + file_ending),
-        cv.VideoWriter_fourcc(*"VP90"),
+        cv.VideoWriter_fourcc(*get_fourcc(capture)),
         capture.get(cv.CAP_PROP_FPS),
         crop_size,
     )
@@ -461,3 +461,13 @@ def fukuyama_sugeno_index(
     fs_index = np.sum(np.multiply(diff, u))
 
     return fs_index
+
+
+# get video codec code
+# from https://stackoverflow.com/questions/61659346/how-to-get-4-character-codec-code-for-videocapture-object-in-opencv
+def get_fourcc(cap: cv.VideoCapture):
+    fourcc = int(cap.get(cv.CAP_PROP_FOURCC))
+    fourcc = bytes(
+        [v & 255 for v in (fourcc, fourcc >> 8, fourcc >> 16, fourcc >> 24)]
+    ).decode()
+    return fourcc
