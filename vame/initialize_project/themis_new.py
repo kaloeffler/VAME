@@ -8,7 +8,7 @@ from vame.util.prep_themis_data import get_video_metadata, pickle_dlc_to_df
 from vame.util import auxiliary
 
 
-def init_new_project(project_path, video_root, landmark_root):
+def init_new_project(project_path, video_root, landmark_root, select_video_ids=[]):
     if os.path.exists(project_path):
         raise AssertionError(f"Project dir {project_path} already exists!")
     project_path = Path(project_path)
@@ -26,6 +26,12 @@ def init_new_project(project_path, video_root, landmark_root):
 
     # create for each landmark file a subdir in data and in results
     landmark_file_names = [file.split(".")[0] for file in os.listdir(landmark_path)]
+    if select_video_ids:
+        landmark_file_names = [
+            file
+            for file in landmark_file_names
+            if file.split("_")[1] in select_video_ids
+        ]
     for lm_name in landmark_file_names:
         (results_path / lm_name).mkdir(parents=True, exist_ok=True)
         (data_path / lm_name).mkdir(parents=True, exist_ok=True)

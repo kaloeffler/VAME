@@ -8,40 +8,49 @@ import vame
 from vame.initialize_project.themis_new import init_new_project
 from vame.util.align_egocentrical_themis import egocentric_alignment
 from datetime import datetime
-
+from vame.model.inference import (
+    inference,
+    align_inference_data,
+    preprocess_inference_data,
+)
 
 VIDEO_ROOT = "/media/Themis/Data/Video"
 PKL_ROOT = "/media/Themis/Data/Models/3843S2B10Gaussians/analyses"
 
-PROJECT_PATH = "/home/katharina/vame_approach/themis_tail_belly_align"
-
+# train on K7:0044, H06:0089 ; eval on all other unseen seq.
+PROJECT_PATH = "/home/katharina/vame_approach/tb_align_0044_0089"
+VIDEO_IDS = ["0044", "0089"]
 # used to align the landmark files
 # landmarks by position in the landmarks files
-    # ['nose', 'head', 'forepawR1', 'forepawR2', 'forePawL1',
-    # 'forePawL2', 'chest1', 'chest2', 'belly1', 'belly2',
-    # 'hindpawR1', 'hindpawR2', 'hindpawR3', 'hindpawL1',
-    # 'hindpawL2', 'hindpawL3', 'tailbase']
+# ['nose', 'head', 'forepawR1', 'forepawR2', 'forePawL1',
+# 'forePawL2', 'chest1', 'chest2', 'belly1', 'belly2',
+# 'hindpawR1', 'hindpawR2', 'hindpawR3', 'hindpawL1',
+# 'hindpawL2', 'hindpawL3', 'tailbase']
 # belly1: 8, tailbase: 16
 pose_alignment_idx = [8, 16]
 
 CREATE_NEW_PROJECT = False
-PREP_TRAINING_DATA = True
+PREP_TRAINING_DATA = False
 TRAIN_MODEL = False
 EVAL_MODEL = False
-VISUALIZE_MODEL = False
+VISUALIZE_MODEL = True
 
 # create landmark.csv files including the landmark positions and likelihood (confidence scores)
 # similar to the DLC files and do some simple visualization of the confidence scores
 
 # initialize new project
 if CREATE_NEW_PROJECT:
-    config = init_new_project(PROJECT_PATH, VIDEO_ROOT, PKL_ROOT)
+    config = init_new_project(
+        PROJECT_PATH, VIDEO_ROOT, PKL_ROOT, select_video_ids=VIDEO_IDS
+    )
 else:
     config = os.path.join(PROJECT_PATH, "config.yaml")
 
 if not os.path.exists(
     os.path.join(PROJECT_PATH, "data", "train", "pose_alignment_idx.npy")
 ):
+    if not os.path.exists(os.path.join(PROJECT_PATH, "data", "train")):
+        os.makedirs(os.path.join(PROJECT_PATH, "data", "train"))
     np.save(
         os.path.join(PROJECT_PATH, "data", "train", "pose_alignment_idx.npy"),
         np.array(pose_alignment_idx),
@@ -51,6 +60,7 @@ if not os.path.exists(
 
 # TODO: add some checks concerning the threshold - otherwise many datapoints will be rejected
 # cross check with example.csv how many datapoints are rejected
+
 if PREP_TRAINING_DATA:
     # landmarks by position in the landmarks files
     # ['nose', 'head', 'forepawR1', 'forepawR2', 'forePawL1',
@@ -84,14 +94,40 @@ trained_models = [
 trained_models.sort(key=lambda x: x[0])
 latest_model = trained_models[-1][-1]
 
-config = os.path.join(PROJECT_PATH, "model", latest_model, "config.yaml")
+config_file = os.path.join(PROJECT_PATH, "model", latest_model, "config.yaml")
 
 if EVAL_MODEL:
     # 4 Evaluate trained model
-    vame.evaluate_model(config)
+    vame.evaluate_model(config_file)
 if VISUALIZE_MODEL:
+    inference_path = os.path.join(PROJECT_PATH, "inference")
+    # TODO: RUN INFERENCE!!!!!
     # 5 segment motifs/pose; output latent_vector..npy file
-    vame.pose_segmentation(config)
+    train_data_dir = os.path.join(PROJECT_PATH, "data", "train")
+    
+    for lm_file in os.listdir(os.path.join(PROJECT_PATH, "landmarks")):
+        lm_file = os.path.join(PROJECT_PATH, "landmarks", lm_file)
+        align_inference_data(
+            lm_file,
+            config_file,
+            alignment_idx=pose_alignment_idx,
+            save_dir=inference_path,
+        )
+
+        lm_file_name = os.path.basename(lm_file).split(".")[0]
+        aligned_data_file = os.path.join(
+            inference_path, "data", lm_file_name, lm_file_name + "-PE-seq.npy",
+        )
+        preprocess_inference_data(aligned_data_file, config_file, train_data_dir)
+
+    inference_data_files = [
+        os.path.join(inference_path, "data", dir_name, dir_name + "-PE-seq-clean.npy")
+        for dir_name in os.listdir(os.path.join(inference_path, "data"))
+    ]
+
+    res_path = os.path.join(inference_path, "results")
+    #  load model and predict embeddings for the aligned and preprocessed data files
+    inference(inference_data_files, config_file, train_data_dir, res_path)
 
     # -> then run analysis_scipts/visualize_latent_space.ipynb to explore the latent space interactively
 
