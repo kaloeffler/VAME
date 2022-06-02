@@ -144,7 +144,7 @@ def inference(
         )
 
 
-def embedd_data(data_files, cfg, model, legacy, train_data_path):
+def embedd_data(data_files, cfg, model, legacy, train_data_path, batch_size=256):
     temp_win = cfg["time_window"]
     num_features = cfg["num_features"]
     if legacy == False:
@@ -160,18 +160,20 @@ def embedd_data(data_files, cfg, model, legacy, train_data_path):
     for file in data_files:
         print("Embedd latent vectors for file %s" % file)
         data = np.load(file)
-        # TODO: apply sequence mean / std from training
         latent_vector_list = []
         with torch.no_grad():
-            for i in tqdm.tqdm(range(data.shape[1] - temp_win)):
+            data_normalized = (data - x_mean) / x_std
+            for i in tqdm.tqdm(range(0, data.shape[1] - temp_win, batch_size)):
                 # for i in tqdm.tqdm(range(10000)):
-                data_sample_np = data[:, i : temp_win + i].T
-                data_sample_np = np.reshape(data_sample_np, (1, temp_win, num_features))
-                data_sample_normalized = (data_sample_np - x_mean) / x_std
+                temp_win_ids = np.arange(temp_win)
+                time_ids = np.arange(i, min(batch_size + i, data.shape[1] - temp_win))
+                data_ids = time_ids.reshape(-1, 1) + temp_win_ids.reshape(1, -1)
+                # shape: (num_features, batchsize, temp_win)
+                data_sample_np = data_normalized[:, data_ids]
+                # shape: (batchsize, temp_win, num_features)
+                data_sample_np = np.transpose(data_sample_np, axes=(1, 2, 0))
                 h_n = model.encoder(
-                    torch.from_numpy(data_sample_normalized)
-                    .type("torch.FloatTensor")
-                    .cuda()
+                    torch.from_numpy(data_sample_np).type("torch.FloatTensor").cuda()
                 )
                 _, mu, _ = model.lmbda(h_n)
                 latent_vector_list.append(mu.cpu().data.numpy())
