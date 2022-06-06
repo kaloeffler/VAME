@@ -1,3 +1,4 @@
+"""Script to generate cropped, aligned video files and videos of the landmark poses."""
 import sys
 
 sys.path.insert(0, "/home/katharina/vame_approach/VAME")
@@ -46,7 +47,7 @@ for lm_file in os.listdir(os.path.join(PROJECT_PATH, "landmarks")):
     )
 
     video_name = os.path.basename(video_file)
-    pose_video_file = os.path.join(PROJECT_PATH, "videos", "poses", video_name)
+    pose_video_file = os.path.join(PROJECT_PATH, "videos", "poses", "p"+video_name)
     if not os.path.exists(pose_video_file):
         crop_size = 400
         # min max normalize the data to a fixed grid shape for visualization
@@ -54,7 +55,7 @@ for lm_file in os.listdir(os.path.join(PROJECT_PATH, "landmarks")):
         # reshape to (N_samples, N_landmarks, 2)
         landmark_data_aligned = np.load(
             os.path.join(
-                PROJECT_PATH, "data", landmark_name, landmark_name + "-PE-seq.npy"
+                PROJECT_PATH, "inference", "data", landmark_name, landmark_name + "-PE-seq.npy"
             )
         ).T
         landmark_data_aligned = landmark_data_aligned.reshape(
