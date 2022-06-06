@@ -1,4 +1,4 @@
-"""Adapt the new.py file for the themis data"""
+"""Adapt the new.py file from the orig. VAME project for the themis data"""
 import os
 from pathlib import Path
 import re

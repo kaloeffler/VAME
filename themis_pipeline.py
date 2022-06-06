@@ -5,7 +5,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn
 import vame
-from vame.initialize_project.themis_new import init_new_project
 from vame.util.align_egocentrical_themis import egocentric_alignment
 from datetime import datetime
 from vame.model.inference import (
@@ -29,18 +28,18 @@ VIDEO_IDS = ["0044", "0089"]
 # belly1: 8, tailbase: 16
 pose_alignment_idx = [8, 16]
 
-CREATE_NEW_PROJECT = False
+CREATE_NEW_PROJECT = True
 PREP_TRAINING_DATA = False
 TRAIN_MODEL = False
 EVAL_MODEL = False
-VISUALIZE_MODEL = True
+VISUALIZE_MODEL = False
 
 # create landmark.csv files including the landmark positions and likelihood (confidence scores)
 # similar to the DLC files and do some simple visualization of the confidence scores
 
 # initialize new project
 if CREATE_NEW_PROJECT:
-    config = init_new_project(
+    config = vame.init_new_project(
         PROJECT_PATH, VIDEO_ROOT, PKL_ROOT, select_video_ids=VIDEO_IDS
     )
 else:
