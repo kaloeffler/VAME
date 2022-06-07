@@ -6,11 +6,14 @@ from glob import glob
 
 
 def get_video_metadata(
-    video_root, DLC_model="DLC_resnet50_dlc_testJan21shuffle1_380600.h5"
+    video_root: str, DLC_model: str = "DLC_resnet50_dlc_testJan21shuffle1_380600.h5"
 ):
-    """
-    creates a DataFrame of video metadata based on files under the video root
-    in cajal "/media/Themis/Data/Video/"
+    """Creates a DataFrame of video metadata based on files under the video_root folder
+    
+    Args:
+        video_root (str): path to the root folder of the rat videos
+        DLC_model (str, optional): Return only videos that have a specific model for landmark prediction already trained on. Defaults to "DLC_resnet50_dlc_testJan21shuffle1_380600.h5".
+
     """
 
     vid_list = [
@@ -53,15 +56,14 @@ def get_video_metadata(
     return vid_df
 
 
-# open CV2 used for reading videos - goes for this type of video to the correct frame
+def pickle_dlc_to_df(pkl_file: str, df_header: list, return_conf_df: bool = False):
+    """Convert pkl file with landmarks and confidence measures to a dataframe similar as in DLC.
 
-
-# TODO: lod pickle file - export pd  dataframe - save at the landmark location
-# dict : video -- pkl file -> load pkl, to df, save file
-
-
-def pickle_dlc_to_df(pkl_file, df_header, return_conf_df=False):
-    """Convert pkl file with landmarks and confidence measures to a dataframe similar as in DLC."""
+    Args:
+        pkl_file (str): path to the pickle file containing landmarks and confidence scores
+        df_header (list): names of the landmarks
+        return_conf_df (bool, optional): if true return the confidence scores as a dataframe. Defaults to False.
+    """
     with open(pkl_file, "rb") as file:
         data = pickle.load(file)
     landmark_positions = data["orig_lm"]
