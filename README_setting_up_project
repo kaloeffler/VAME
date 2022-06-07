@@ -1,9 +1,0 @@
-# create conda environment
-conda env create -f VAME/VAME.yaml
-# activate environment
-conda activate venv_VAME
-# run setup.py
-python setup.py install  # comment:
-
-# running themis_pipeline.py to generate training data, train the model and predict latent vectors
-# running visualize_latent_space.ipynb to explore the learned latent space
