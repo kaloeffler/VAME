@@ -1,9 +1,7 @@
-import pandas as pd
-import re
+"""Pipeline to process the THEMIS landmark data from data preprocessing over model training,
+ evaluation and inference (prediction of the latent vectors)"""
 import os
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn
 import vame
 from vame.util.align_egocentrical_themis import egocentric_alignment
 from datetime import datetime
@@ -18,6 +16,7 @@ PKL_ROOT = "/media/Themis/Data/Models/3843S2B10Gaussians/analyses"
 
 # train on K7:0044, H06:0089 ; eval on all other unseen seq.
 PROJECT_PATH = "/home/katharina/vame_approach/tb_align_0044_0089"
+PROJECT_PATH = "/home/katharina/vame_approach/test"
 VIDEO_IDS = ["0044", "0089"]
 # used to align the landmark files
 # landmarks by position in the landmarks files
@@ -32,12 +31,15 @@ CREATE_NEW_PROJECT = True
 PREP_TRAINING_DATA = False
 TRAIN_MODEL = False
 EVAL_MODEL = False
-VISUALIZE_MODEL = False
+PREDICT_LATENT_VECTORS = False
 
 # create landmark.csv files including the landmark positions and likelihood (confidence scores)
 # similar to the DLC files and do some simple visualization of the confidence scores
 
 # initialize new project
+
+# TODO: run lm_conf_quantiles.py in anaysis_scripts to see the distribution of the confidence scores in the landmark
+# files and select a suitable threshold -> set the threshold in the themis_new.py : cfg_file["pose_confidence"] = 0.5
 if CREATE_NEW_PROJECT:
     config = vame.init_new_project(
         PROJECT_PATH, VIDEO_ROOT, PKL_ROOT, select_video_ids=VIDEO_IDS
@@ -54,11 +56,6 @@ if not os.path.exists(
         os.path.join(PROJECT_PATH, "data", "train", "pose_alignment_idx.npy"),
         np.array(pose_alignment_idx),
     )
-# run lm_congf_quantiles.py to see the distribution of the confidence scores in the landmark
-# files and select a suitable threshold
-
-# TODO: add some checks concerning the threshold - otherwise many datapoints will be rejected
-# cross check with example.csv how many datapoints are rejected
 
 if PREP_TRAINING_DATA:
     # landmarks by position in the landmarks files
@@ -80,8 +77,9 @@ if PREP_TRAINING_DATA:
     )
     # 2.3 training data generation
     vame.create_trainset(config)
+
+# 3: VAME training
 if TRAIN_MODEL:
-    # 3 VAME training
     vame.train_model(config)
 
 # load the CONFIG FILE from the last trained model
@@ -95,15 +93,15 @@ latest_model = trained_models[-1][-1]
 
 config_file = os.path.join(PROJECT_PATH, "model", latest_model, "config.yaml")
 
+# 4: Evaluate trained model
 if EVAL_MODEL:
-    # 4 Evaluate trained model
     vame.evaluate_model(config_file)
-if VISUALIZE_MODEL:
+
+# 5: inference (predicting latent vectors) for the whole time series
+if PREDICT_LATENT_VECTORS:
     inference_path = os.path.join(PROJECT_PATH, "inference")
-    # TODO: RUN INFERENCE!!!!!
-    # 5 segment motifs/pose; output latent_vector..npy file
     train_data_dir = os.path.join(PROJECT_PATH, "data", "train")
-    
+
     for lm_file in os.listdir(os.path.join(PROJECT_PATH, "landmarks")):
         lm_file = os.path.join(PROJECT_PATH, "landmarks", lm_file)
         align_inference_data(
@@ -127,11 +125,17 @@ if VISUALIZE_MODEL:
     res_path = os.path.join(inference_path, "results")
     #  load model and predict embeddings for the aligned and preprocessed data files
     inference(inference_data_files, config_file, train_data_dir, res_path)
-
-    # -> then run analysis_scipts/visualize_latent_space.ipynb to explore the latent space interactively
+    print(
+        "Run the *.ipynb files in analysis_scripts/ folder to explore the latent space interactively"
+    )
+    # -> then run the *.ipynb files in analysis_scipts/ to explore the latent space interactively
 
     #### additional visualization options form the original VAME repo ###############
+    # WARNING: some of the functions might not work given the changed project structure!
+
     # there are many options to for visualization
+    # predict the latent vectors using the orig. VAME code
+    # vame.pose_segmentation(config)
     # OPTIONIAL: Create motif videos to get insights about the fine grained poses
     # vame.motif_videos(config, videoType=".mp4")
 
