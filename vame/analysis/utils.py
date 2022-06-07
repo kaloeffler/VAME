@@ -1,4 +1,4 @@
-"""Create additional visualizations to analyze the quality of the learned embeddings"""
+"""Utilities to analyze the latent space."""
 import cv2 as cv
 import numpy as np
 from matplotlib import cm
@@ -14,13 +14,24 @@ from scipy.spatial.distance import cdist
 
 
 def create_pose_snipplet(
-    aligned_landmark_data,
-    landmark_names,
-    time_idx,
-    video_path,
-    crop_size=(400, 400),
-    fps=120,
+    aligned_landmark_data: np.array,
+    landmark_names: list,
+    time_idx: np.array,
+    video_path: str,
+    crop_size: tuple = (400, 400),
+    fps: int = 120,
 ):
+    """Create a snipplet video of aligned landmarks.
+
+    Args:
+        aligned_landmark_data (np.array): aligned landmark data
+        landmark_names (list): names of the landmarks
+        time_idx (np.array): time ids based on which the video snipplet will be created
+        video_path (str): path where to write the resulting video
+        crop_size (tuple, optional): size of the video snipplet. Defaults to (400, 400).
+        fps (int, optional): frames per second of the video snipplet. Defaults to 120.
+
+    """
     # assumed shape aligned_landmark_data: n_samples, N_landmarks,2
     dummy_frame = np.zeros(crop_size)
     if os.path.exists(video_path):
@@ -359,7 +370,9 @@ def find_percentile_threshold(
     test_fraction: float = 0.01,
 ):
     """Compute the percentile in which temporally close neighbors dominate the
-    neighborhood in the latent space. This percentile can then be used to dilute samples.
+     neighborhood in the latent space (>=0.5 of the closest neighbors in the latent space are
+     from temporally very close (and usually strongly overlapping) input time series.
+     This neighbor percentile can then be used to dilute samples.
 
     Args:
         latent_vectors (np.array): a matrix of shape (N_timepoints, M_embedding) where each row represents an embedding vector
