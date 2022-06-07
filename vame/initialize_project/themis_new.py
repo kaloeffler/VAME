@@ -8,7 +8,22 @@ from vame.util.prep_themis_data import get_video_metadata, pickle_dlc_to_df
 from vame.util import auxiliary
 
 
-def init_new_project(project_path, video_root, landmark_root, select_video_ids=[]):
+def init_new_project(
+    project_path: str, video_root: str, landmark_root: str, select_video_ids: list = []
+):
+    """Create a new project for VAME. This will create the required folders as well as create csv landmark
+    files from pickle files that contain the landmarks with confidence scores.
+
+    Args:
+        project_path (str): path where the new project will be created
+        video_root (str): path to the video root of the THEMIS project
+        landmark_root (str): path to the landmark.pkl files to use (which contain the landmark positions and the confidence scores)
+        select_video_ids (list, optional): . Defaults to [] - all landmarks files will be used in training.
+
+    Returns:
+        str: path to the config.yaml file
+    """
+
     if os.path.exists(project_path):
         raise AssertionError(f"Project dir {project_path} already exists!")
     project_path = Path(project_path)
@@ -16,8 +31,9 @@ def init_new_project(project_path, video_root, landmark_root, select_video_ids=[
     data_path = project_path / "data"
     results_path = project_path / "results"
     model_path = project_path / "model"
+    inference_path = project_path / "inference"
 
-    for p in [landmark_path, data_path, results_path, model_path]:
+    for p in [landmark_path, data_path, results_path, model_path, inference_path]:
         p.mkdir(parents=True)
         print('Created "{}"'.format(p))
 
@@ -60,7 +76,7 @@ def init_new_project(project_path, video_root, landmark_root, select_video_ids=[
     #  so adapting the window size to a comparable total time span here
     cfg_file["time_window"] = int(30 * 120 / 25)
     cfg_file["prediction_decoder"] = 1
-    # FIXME: the videos in the VAME paper have frame rate 25 (see video example), we use 120fps
+    # FIXME: the videos in the VAME paper have frame rate 25 (see video example on the webside), we use 120fps
     #  so adapting the window size to a comparable total time span here
     cfg_file["prediction_steps"] = int(15 * 120 / 25)
     cfg_file["model_convergence"] = 50
@@ -103,7 +119,8 @@ def init_new_project(project_path, video_root, landmark_root, select_video_ids=[
     cfg_file["scheduler_gamma"] = 0.2
     cfg_file["softplus"] = False
     # TODO: set to something resonable concerning the confidence scores of the
-    # landmark files
+    # landmark files -> use the lm_conf_quantiles.py in analysis_scripts to check
+    # how the confidence scores are distributed
     cfg_file["pose_confidence"] = 0.5
     cfg_file["iqr_factor"] = 4
     cfg_file["robust"] = True
@@ -118,8 +135,17 @@ def init_new_project(project_path, video_root, landmark_root, select_video_ids=[
 
 
 def save_video_and_landmark_dfs(
-    video_root, landmark_root, save_dir_video, save_dir_landmarks
+    video_root: str, landmark_root: str, save_dir_video: str, save_dir_landmarks: str
 ):
+    """Create landmark.csv files with a format similar to the DLC (deep lab cut) files: x,y,score for each landmark
+    based on the landmark.pkl files which contain the landmark x,y position as well as a confidence score.
+
+    Args:
+        video_root (str): path to the root where the rat videos are stored
+        landmark_root (str): path to the root where the corresponding landmark.pkl files are stored
+        save_dir_video (str): path where to save the information on where the videos are located
+        save_dir_landmarks (str): path to where the generated landmarks.csv files will be stored
+    """
     pkl_files = [
         os.path.join(landmark_root, element)
         for element in os.listdir(landmark_root)
