@@ -1,4 +1,4 @@
-"""Apply a trained model on another landmark file"""
+"""Inference utilities to apply a trained model on a landmark file and predict latent vectors."""
 import os
 from datetime import datetime
 import pandas as pd
@@ -144,7 +144,25 @@ def inference(
         )
 
 
-def embedd_data(data_files, cfg, model, legacy, train_data_path, batch_size=256):
+def embedd_data(
+    data_files: list,
+    cfg: dict,
+    model: torch.nn.Module,
+    legacy: bool,
+    train_data_path: str,
+    batch_size: int = 256,
+):
+    """Predict latent vectors for landmark time series.
+
+    Args:
+        data_files (list): list of path (.npy files)s to preprocessed, aligned landmark data
+        cfg (dict): configuration of the project
+        model (torch.nn.Module): the trained VAE model
+        legacy (bool): if legacy is true the full number of features is used, otherwise n_features -2
+                     (the two time series with the lowest std in the train data are removed)
+        train_data_path (str): path to the training data
+        batch_size (int, optional): batch size to process batches of time series simultaneously. Defaults to 256.
+    """
     temp_win = cfg["time_window"]
     num_features = cfg["num_features"]
     if legacy == False:
@@ -164,7 +182,6 @@ def embedd_data(data_files, cfg, model, legacy, train_data_path, batch_size=256)
         with torch.no_grad():
             data_normalized = (data - x_mean) / x_std
             for i in tqdm.tqdm(range(0, data.shape[1] - temp_win, batch_size)):
-                # for i in tqdm.tqdm(range(10000)):
                 temp_win_ids = np.arange(temp_win)
                 time_ids = np.arange(i, min(batch_size + i, data.shape[1] - temp_win))
                 data_ids = time_ids.reshape(-1, 1) + temp_win_ids.reshape(1, -1)
@@ -182,81 +199,3 @@ def embedd_data(data_files, cfg, model, legacy, train_data_path, batch_size=256)
         latent_vector_files.append(latent_vector)
 
     return latent_vector_files
-
-
-if __name__ == "__main__":
-    PROJECT_PATH = "/home/katharina/vame_approach/themis_tail_belly_align"
-    SAVE_DATA_PATH = os.path.join(PROJECT_PATH, "inference")
-    # per landmark file there will be a subdir in inference named as the landmark and will store the csv and the video data?
-
-    # video: rhodent
-    # caution: the pkl files just contain the a fraction (the first N frames) of the total landmarks
-    # 0057: H01 -> the landmarks the model in "themis_tail_belly_align" was trained on
-    # 0051: K8
-    # 0089: H06
-    ## 0053: (full dataset!)
-    PKL_FILE = "/media/Themis/Data/Models/3843S2B10Gaussians/analyses/landmarks_0089_3843S2B10Gaussians_E149_confidece.pkl"
-
-    pkl_file_dir = os.path.dirname(PKL_FILE)
-    # load the CONFIG FILE from the last trained model
-    trained_models = [
-        (datetime.strptime(element, "%m-%d-%Y-%H-%M"), element)
-        for element in os.listdir(os.path.join(PROJECT_PATH, "model"))
-    ]
-    # sort by time step
-    trained_models.sort(key=lambda x: x[0])
-    latest_model = trained_models[-1][-1]
-
-    config_file = os.path.join(PROJECT_PATH, "model", latest_model, "config.yaml")
-
-    # prepare data pkl -> csv -> data as model input
-    pkl_file_name = os.path.basename(PKL_FILE).split(".")[0]
-    landmark_file_name = "_".join(pkl_file_name.split("_")[:-1])
-    landmark_file = os.path.join(pkl_file_dir, landmark_file_name + ".csv")
-    pose_alignment_idx = np.load(
-        os.path.join(PROJECT_PATH, "data", "train", "pose_alignment_idx.npy")
-    ).to_list()
-
-    if True:
-
-        if not os.path.exists(landmark_file):
-            print(f"No file named {landmark_file}")
-
-        landmark_names = pd.read_csv(landmark_file, header=[0, 1]).columns
-        landmark_df = pickle_dlc_to_df(PKL_FILE, landmark_names, return_conf_df=False)
-        save_landmark_file = os.path.join(
-            SAVE_DATA_PATH, "landmarks", pkl_file_name + ".csv"
-        )
-        if not os.path.exists(os.path.dirname(save_landmark_file)):
-            os.makedirs(os.path.dirname(save_landmark_file))
-        landmark_df.to_csv(save_landmark_file)
-
-        align_inference_data(
-            save_landmark_file,
-            config_file,
-            alignment_idx=pose_alignment_idx,
-            save_dir=SAVE_DATA_PATH,
-        )
-
-        aligned_data_file = os.path.join(
-            SAVE_DATA_PATH, "data", pkl_file_name, pkl_file_name + "-PE-seq.npy",
-        )
-        train_data_dir = os.path.join(PROJECT_PATH, "data", "train")
-        preprocess_inference_data(aligned_data_file, config_file, train_data_dir)
-
-    # TODO: collect automatically from the data folder
-    dd = os.path.join(
-        SAVE_DATA_PATH, "data", pkl_file_name, pkl_file_name + "-PE-seq-clean.npy",
-    )
-    inference_data_files = [dd]
-
-    res_path = os.path.join(SAVE_DATA_PATH, "results")
-    #  load model and predict embeddings for the aligned and preprocessed data files
-    inference(inference_data_files, config_file, train_data_dir, res_path)
-
-    # todo: evaluate the embeddings and compare to the orig found clusters?
-    # e.g. fit on "train"data - cluster using the fcm fittet on train then vis clip matrices
-    # sampled from the "same" cluster
-
-    # howmuch do the clusters found in train vs found by fitting fcm again on vectors from another dataset
-    # look alike? - compare by finding the overlap of samples clustered to cluster N_x / n_y
