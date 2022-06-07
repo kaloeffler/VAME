@@ -1,5 +1,5 @@
 """
-Adapt align_egocentrial such that it works with the adapted file structure
+Adapt align_egocentrial.py from the VAME code such that it works with the adapted THEMIS file structure
 (videos won't be copied but are kept as .csv file with paths to them and
 instead of evaluation by videos the evaluation is done by the landmark predictions
 since different models where trained that need to be compared)
@@ -17,29 +17,29 @@ import re
 
 
 def align_mouse(
-    project_dir,
-    landmark_file_name,
-    crop_size,
-    pose_list,
-    pose_ref_index,
-    confidence,
-    pose_flip_ref,
-    bg,
-    frame_count,
-    use_video=True,
+    project_dir: str,
+    landmark_file_name: str,
+    crop_size: tuple,
+    pose_list: list,
+    pose_ref_index: list,
+    confidence: float,
+    bg: np.array,
+    frame_count: int,
+    use_video: bool = False,
 ):
-    # returns: list of cropped images (if video is used) and list of cropped DLC points
-    #
-    # parameters:
-    # project_dir: project directory
-    # landmark_file_name: name of the landmark file to process
-    # crop_size: tuple of x and y crop size
-    # pose_list: list of arrays containg corresponding x and y DLC values
-    # pose_ref_index: indices of 2 lists in dlc_list to align mouse along
-    # pose_flip_ref: indices of 2 lists in dlc_list to flip mouse if flip was false
-    # bg: background image to subtract
-    # frame_count: number of frames to align
-    # use_video: boolean if video should be cropped or DLC points only
+    """Align all landmarks based on two landmarks.
+
+    Args:
+        project_dir (str): path to the project directory
+        landmark_file_name (str): name of the landmark file
+        crop_size (tuple): tuple of x and y crop size
+        pose_list (list): list of arrays containg corresponding x and y DLC values
+        pose_ref_index (list): indices in pose_list based on which the landmarks will be aligned
+        confidence (float): landmarks below the confidence score will be replaced by landmarks interpolated from neighboring time points
+        bg (np.array): background image to substract from the image
+        frame_count (int): number of frames to align
+        use_video (bool, optional): if True create a croppped, aligned video in addition to aligning the landmarks . Defaults to False.
+    """
 
     images = []
     points = []
@@ -116,7 +116,7 @@ def align_mouse(
 
         # crop image
         out, shifted_points = crop_and_flip(
-            rect, img, pose_list_bordered, pose_flip_ref
+            rect, img, pose_list_bordered, pose_ref_index
         )
 
         if use_video:  # for memory optimization, just save images when video is used.
@@ -137,13 +137,20 @@ def align_mouse(
 
 
 def egocentric_alignment(
-    project_path,
-    pose_ref_index=[0, 5],
-    crop_size=(300, 300),
-    use_video=False,
-    check_video=False,
+    project_path: str,
+    pose_ref_index: list = [8, 16],
+    crop_size: tuple = (300, 300),
+    use_video: bool = False,
+    check_video: bool = False,
 ):
-    """ Happy aligning """
+    """Align all landmark files in project_path / "landmarks".
+    Args:
+        project_path (str): path to the project directory
+        pose_ref_index (list, optional): landmark indices based on which the landmarks will be aligned. Defaults to [8, 16] (belly1: 8, tailbase: 16).
+        crop_size (tuple, optional):  tuple of x and y crop size
+        use_video (bool, optional): process the video file and create an aligned, cropped video in addition. Defaults to False.
+        check_video (bool, optional): if true a video file with the overlaid aliged landmarks is saved. Defaults to False.
+    """
     config = os.path.join(project_path, "config.yaml")
     video_df = pd.read_csv(os.path.join(project_path, "video_info.csv"))
 
@@ -183,9 +190,10 @@ def egocentric_alignment(
             ),
             egocentric_time_series,
         )
-    #        np.save(os.path.join(path_to_file,'data/',file,"",file+'-PE-seq.npy', egocentric_time_series))
 
-    print("Your data is now ine right format and you can call vame.create_trainset()")
+    print(
+        "Your data is now in the right format and you can call vame.create_trainset()"
+    )
 
 
 def alignment(
@@ -218,9 +226,6 @@ def alignment(
 
     pose_ref_index = pose_ref_index
 
-    # list of 2 reference coordinate indices for avoiding flipping
-    pose_flip_ref = pose_ref_index
-
     if use_video:
         # compute background
         bg = background(video_file)
@@ -242,7 +247,6 @@ def alignment(
         pose_list,
         pose_ref_index,
         confidence,
-        pose_flip_ref,
         bg,
         frame_count,
         use_video,
