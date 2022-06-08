@@ -7,20 +7,9 @@ import os
 import pandas as pd
 import numpy as np
 
-LANDMARK_DIR = "/home/katharina/vame_approach/themis_dummy/landmarks"
+LANDMARK_DIR = "/home/katharina/vame_approach/tb_align_0089/landmarks"
 
 landmark_files = [os.path.join(LANDMARK_DIR, file) for file in os.listdir(LANDMARK_DIR)]
-
-demo_df = pd.read_csv(
-    "/home/katharina/vame_approach/VAME/examples/video-1.csv", header=[1, 2]
-)
-is_conf_column = [col_name[-1] == "likelihood" for col_name in demo_df.columns]
-demo_df_conf = demo_df[demo_df.columns[is_conf_column]]
-
-print("-" * 20)
-print("Confidence scores of demo file")
-print(demo_df_conf.quantile(np.linspace(0.1, 0.9, 9)))
-print("-" * 20)
 
 
 for lm_file in landmark_files:
