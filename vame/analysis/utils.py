@@ -36,6 +36,8 @@ def create_pose_snipplet(
     dummy_frame = np.zeros(crop_size)
     if os.path.exists(video_path):
         raise AssertionError(f"Video file already exists! {video_path}")
+    if not os.path.exists(os.path.dirname(video_path)):
+        os.makedirs(os.path.dirname(video_path))
     writer = cv.VideoWriter(video_path, cv.VideoWriter_fourcc(*"VP90"), fps, crop_size)
     cmap = cm.get_cmap("tab20").colors
     for time_id in tqdm.tqdm(time_idx, disable=not True, desc="Create pose frames"):
