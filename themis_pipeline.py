@@ -103,18 +103,21 @@ if PREDICT_LATENT_VECTORS:
 
     for lm_file in os.listdir(os.path.join(PROJECT_PATH, "landmarks")):
         lm_file = os.path.join(PROJECT_PATH, "landmarks", lm_file)
-        align_inference_data(
-            lm_file,
-            config_file,
-            alignment_idx=pose_alignment_idx,
-            save_dir=inference_path,
-        )
-
         lm_file_name = os.path.basename(lm_file).split(".")[0]
+
         aligned_data_file = os.path.join(
             inference_path, "data", lm_file_name, lm_file_name + "-PE-seq.npy",
         )
-        preprocess_inference_data(aligned_data_file, config_file, train_data_dir)
+        if not os.path.exists(aligned_data_file):
+            align_inference_data(
+                lm_file,
+                config_file,
+                alignment_idx=pose_alignment_idx,
+                save_dir=inference_path,
+            )
+            preprocess_inference_data(aligned_data_file, config_file, train_data_dir)
+        else:
+            print(f"File {aligned_data_file} already exists, skipped alignment step.")
 
     inference_data_files = [
         os.path.join(inference_path, "data", dir_name, dir_name + "-PE-seq-clean.npy")
