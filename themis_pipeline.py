@@ -15,9 +15,8 @@ VIDEO_ROOT = "/media/Themis/Data/Video"
 PKL_ROOT = "/media/Themis/Data/Models/3843S2B10Gaussians/analyses"
 
 # train on K7:0044, H06:0089 ; eval on all other unseen seq.
-PROJECT_PATH = "/home/katharina/vame_approach/tb_align_0044_0089"
-PROJECT_PATH = "/home/katharina/vame_approach/test"
-VIDEO_IDS = ["0044", "0089"]
+PROJECT_PATH = "/home/katharina/vame_approach/tb_align_0089"
+VIDEO_IDS_TRAINING = ["0089"]
 # used to align the landmark files
 # landmarks by position in the landmarks files
 # ['nose', 'head', 'forepawR1', 'forepawR2', 'forePawL1',
@@ -27,11 +26,11 @@ VIDEO_IDS = ["0044", "0089"]
 # belly1: 8, tailbase: 16
 pose_alignment_idx = [8, 16]
 
-CREATE_NEW_PROJECT = True
+CREATE_NEW_PROJECT = False
 PREP_TRAINING_DATA = False
 TRAIN_MODEL = False
 EVAL_MODEL = False
-PREDICT_LATENT_VECTORS = False
+PREDICT_LATENT_VECTORS = True
 
 # create landmark.csv files including the landmark positions and likelihood (confidence scores)
 # similar to the DLC files and do some simple visualization of the confidence scores
@@ -42,7 +41,7 @@ PREDICT_LATENT_VECTORS = False
 # files and select a suitable threshold -> set the threshold in the themis_new.py : cfg_file["pose_confidence"] = 0.5
 if CREATE_NEW_PROJECT:
     config = vame.init_new_project(
-        PROJECT_PATH, VIDEO_ROOT, PKL_ROOT, select_video_ids=VIDEO_IDS
+        PROJECT_PATH, VIDEO_ROOT, PKL_ROOT, select_video_ids=VIDEO_IDS_TRAINING
     )
 else:
     config = os.path.join(PROJECT_PATH, "config.yaml")
@@ -128,49 +127,52 @@ if PREDICT_LATENT_VECTORS:
     print(
         "Run the *.ipynb files in analysis_scripts/ folder to explore the latent space interactively"
     )
-    # -> then run the *.ipynb files in analysis_scipts/ to explore the latent space interactively
+# 6) run the create_aligned_videos.py to create cropped videos for visualization
 
-    #### additional visualization options form the original VAME repo ###############
-    # WARNING: some of the functions might not work given the changed project structure!
+# 7) then run the *.ipynb files in analysis_scipts/ to explore the latent space interactively
 
-    # there are many options to for visualization
-    # predict the latent vectors using the orig. VAME code
-    # vame.pose_segmentation(config)
-    # OPTIONIAL: Create motif videos to get insights about the fine grained poses
-    # vame.motif_videos(config, videoType=".mp4")
 
-    # OPTIONAL: Create behavioural hierarchies via community detection
-    # vame.community(config, show_umap=True, cut_tree=2)
+#### additional visualization options form the original VAME repo ###############
+# WARNING: some of the functions might not work given the changed project structure!
 
-    # OPTIONAL: Create community videos to get insights about behavior on a hierarchical scale
-    # vame.community_videos(config)
+# there are many options to for visualization
+# predict the latent vectors using the orig. VAME code
+# vame.pose_segmentation(config)
+# OPTIONIAL: Create motif videos to get insights about the fine grained poses
+# vame.motif_videos(config, videoType=".mp4")
 
-    # OPTIONAL: Down projection of latent vectors and visualization via UMAP
-    # for label in [None, "motif", "community"]:
-    #    vame.visualization(
-    #        config, label=None
-    #    )  # options: label: None, "motif", "community"
+# OPTIONAL: Create behavioural hierarchies via community detection
+# vame.community(config, show_umap=True, cut_tree=2)
 
-    # OPTIONAL: Use the generative model (reconstruction decoder) to sample from
-    # the learned data distribution, reconstruct random real samples or visualize
-    # the cluster center for validation
-    # vame.generative_model(
-    #    config, mode="centers"
-    # )  # options: mode: "sampling", "reconstruction", "centers", "motifs"
+# OPTIONAL: Create community videos to get insights about behavior on a hierarchical scale
+# vame.community_videos(config)
 
-    # OPTIONAL: Create a video of an egocentrically aligned mouse + path through
-    # the community space (similar to our gif on github) to learn more about your representation
-    # and have something cool to show around ;)
-    # Note: This function is currently very slow. Once the frames are saved you can create a video
-    # or gif via e.g. ImageJ or other tools
-    # vame.gif(
-    #    config,
-    #    pose_ref_index=[0, 5],
-    #    subtract_background=False,
-    #    start=None,
-    #    length=5000,
-    #    max_lag=30,
-    #    label="community",
-    #    file_format=".mp4",
-    #    crop_size=(300, 300),
-    # )
+# OPTIONAL: Down projection of latent vectors and visualization via UMAP
+# for label in [None, "motif", "community"]:
+#    vame.visualization(
+#        config, label=None
+#    )  # options: label: None, "motif", "community"
+
+# OPTIONAL: Use the generative model (reconstruction decoder) to sample from
+# the learned data distribution, reconstruct random real samples or visualize
+# the cluster center for validation
+# vame.generative_model(
+#    config, mode="centers"
+# )  # options: mode: "sampling", "reconstruction", "centers", "motifs"
+
+# OPTIONAL: Create a video of an egocentrically aligned mouse + path through
+# the community space (similar to our gif on github) to learn more about your representation
+# and have something cool to show around ;)
+# Note: This function is currently very slow. Once the frames are saved you can create a video
+# or gif via e.g. ImageJ or other tools
+# vame.gif(
+#    config,
+#    pose_ref_index=[0, 5],
+#    subtract_background=False,
+#    start=None,
+#    length=5000,
+#    max_lag=30,
+#    label="community",
+#    file_format=".mp4",
+#    crop_size=(300, 300),
+# )
