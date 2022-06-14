@@ -14,7 +14,7 @@ from datetime import datetime
 from vame.util.auxiliary import read_config
 from vame.initialize_project.themis_new import get_video_metadata
 
-PROJECT_PATH = "/home/katharina/vame_approach/tb_align_0044_0089"
+PROJECT_PATH = "/home/katharina/vame_approach/tb_align_0089"
 VIDEO_ROOT = "/media/Themis/Data/Video"
 
 save_aligned_video_path = os.path.join(PROJECT_PATH, "videos/aligned_videos")
@@ -24,6 +24,11 @@ save_aligned_video_path = os.path.join(PROJECT_PATH, "videos/aligned_videos")
 CREATE_POSE_VIDEO = False
 
 for lm_file in os.listdir(os.path.join(PROJECT_PATH, "landmarks")):
+    aligned_video_name = os.path.join(
+        save_aligned_video_path, "a" + lm_file.split("_")[1] + ".MP4"
+    )
+    if os.path.exists(aligned_video_name):
+        continue
     landmark_file = os.path.join(PROJECT_PATH, "landmarks", lm_file)
 
     video_id = os.path.basename(landmark_file).split("_")[1]
