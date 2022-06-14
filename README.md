@@ -14,6 +14,10 @@ Here, you can create a [virtual enviroment](https://docs.conda.io/projects/conda
 * Go to the locally cloned VAME directory and run `python setup.py install` in order to install VAME in your active conda environment.
 * (Install the current stable Pytorch release using the OS-dependent instructions from the [Pytorch website](https://pytorch.org/get-started/locally/). Currently, VAME is tested on PyTorch 1.5. (Note, if you use the conda file we supply, PyTorch is already installed and you don't need to do this step.))
 
+## Adding FLAME Clustering
+Some of the *.ipynb notebooks contain a clustering step using FLAME (https://en.wikipedia.org/wiki/FLAME_clustering). To install Python bindings for the C implementation of the FLAME clustering by Fu Limin check see (https://github.com/kaloeffler/pyflame).
+
+
 ## Workflow
 See the `themis_pipeline.py` to get started, which includes all steps from data preprocessing over model training to prediction of latent vectors. Then explore the latent space using the *.inbpy scripts in `analysis_scripts/`
 
