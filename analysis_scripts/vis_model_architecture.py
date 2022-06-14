@@ -7,7 +7,12 @@ from vame.util.auxiliary import read_config
 from torchinfo import summary
 
 
-def print_model_architecture(project_path):
+def print_model_architecture(project_path: str):
+    """Print the architecture of the trained pytorch model.
+
+    Args:
+        project_path (str): path to the root of a VAME project.
+    """
     # load the CONFIG FILE from the last trained model
     trained_models = [
         (datetime.strptime(element, "%m-%d-%Y-%H-%M"), element)
@@ -19,7 +24,6 @@ def print_model_architecture(project_path):
 
     config_file = os.path.join(project_path, "model", latest_model, "config.yaml")
     config = read_config(config_file)
-
 
     ZDIMS = config["zdims"]
     NUM_FEATURES = config["num_features"]
@@ -40,25 +44,23 @@ def print_model_architecture(project_path):
     scheduler_step_size = config["scheduler_step_size"]
     softplus = config["softplus"]
 
-
     model = RNN_VAE(
-                TEMPORAL_WINDOW,
-                ZDIMS,
-                NUM_FEATURES,
-                FUTURE_DECODER,
-                FUTURE_STEPS,
-                hidden_size_layer_1,
-                hidden_size_layer_2,
-                hidden_size_rec,
-                hidden_size_pred,
-                dropout_encoder,
-                dropout_rec,
-                dropout_pred,
-                softplus,
-            ).to()
+        TEMPORAL_WINDOW,
+        ZDIMS,
+        NUM_FEATURES,
+        FUTURE_DECODER,
+        FUTURE_STEPS,
+        hidden_size_layer_1,
+        hidden_size_layer_2,
+        hidden_size_rec,
+        hidden_size_pred,
+        dropout_encoder,
+        dropout_rec,
+        dropout_pred,
+        softplus,
+    ).to()
 
-
-    summary(model, input_size=(1,TEMPORAL_WINDOW, NUM_FEATURES))
+    summary(model, input_size=(1, TEMPORAL_WINDOW, NUM_FEATURES))
 
 
 if __name__ == "__main__":
